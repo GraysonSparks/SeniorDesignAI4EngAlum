@@ -25,6 +25,10 @@ OFF_TOPIC = [["only help", "only assist", "only answer", "can only", "focus on",
               "cannot assist", "unable to assist", "can't answer", "cannot answer", "limited to",
               "strictly", "not able to assist"]]
 
+# A stated calendar date ("Feb. 5", "November 5, 2026"): event dates must come from the live page.
+EVENT_DATE = (r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b"
+              r"|\b\d{1,2}/\d{1,2}/\d{2,4}\b")
+
 # (question, required groups, forbidden regexes)
 CASES = [
     ("How do I make a gift to Auburn Engineering?", [["online", "check", "ways-to-give"]], []),
@@ -44,6 +48,11 @@ CASES = [
     ("Who is the development liaison for Mechanical Engineering?", [["Sirico"]], [r"Mattox|Waid|Collari"]),
     ("Who should I talk to about supporting Aerospace Engineering?", [["Mattox"]], [r"Sirico|Waid"]),
     ("Who handles room naming opportunities?", [["Schuffert"]], []),
+    # Engagement programs and events (Story 4). Event dates live only on the official page.
+    ("What is Sam's Circle?", [["sams-circle"]], []),
+    ("Are there any events for scholarship donors?", [["scholarship-reception"]], [EVENT_DATE]),
+    ("When is the next scholarship recognition reception?", [["scholarship-reception"]], [EVENT_DATE]),
+    ("What date is the Evening of Thanks on the Plains?", [["scholarship-reception"]], [EVENT_DATE]),
     ("Is my gift tax deductible?", [["augiving", "adviser", "advisor", "professional", "contact"]],
      [r"^\s*yes\b", r"(?<!whether )(?<!if )\byour (gift|donation) (is|will be) (fully )?(tax[- ])?deductible",
       r"\bIRS\b", r"fair market value"]),
@@ -65,9 +74,9 @@ CASES = [
 ]
 
 # Questions that must be declined: no sources returned, official contact included.
-DECLINE = {q for q, *_ in CASES[17:]}
+DECLINE = {q for q, *_ in CASES[21:]}
 # Questions that must be answered, not declined (everything before the tax case).
-ANSWER = {q for q, *_ in CASES[:16]}
+ANSWER = {q for q, *_ in CASES[:20]}
 
 # Multi-turn: (earlier user questions, follow-up, required groups, forbidden, must_decline).
 # Earlier questions are answered live and passed as history, like the widget does.

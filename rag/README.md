@@ -20,18 +20,18 @@ python ingest.py                 # rebuild the index; re-run after editing the d
 uvicorn app:app --port 8000      # test site + chat at http://localhost:8000/
 python run_test_prompts.py       # runs the doc's "Suggested Initial Test Prompts"
 python content.py                # print every chunk exactly as it will be embedded (reads ../content/)
-python eval_models.py qwen3.5:9b gemma4:12b   # scored comparison of chat models (31 cases)
+python eval_models.py qwen3.5:9b gemma4:12b   # scored comparison of chat models (42 cases)
 ```
 
 `POST /reload-rules` picks up edits to the doc's Response Rules without restarting the server
 (chunk edits need `python ingest.py` + a restart).
 
-## What gets indexed (52 chunks)
+## What gets indexed (55 chunks)
 
 | Source | Chunks | Notes |
 |---|---|---|
-| `AI4EngAlum Giving Content for RAG` (.odt or .docx, whichever was saved last) | 15 | One per `GIVING-XXX-01` section. Question + answer embedded; `Source:` URLs stored as metadata. |
-| Same doc, "Example Questions and Grounded Answers" | 13 | One per numbered Q&A. Examples that only describe bot behavior ("The chatbot should...") are skipped; the response rules cover them. An example without its own URL takes the source of the curated chunk it overlaps with most (run `python content.py` to see the matches). |
+| `AI4EngAlum Giving Content for RAG` (.odt or .docx, whichever was saved last) | 16 | One per `GIVING-XXX-01` section. Question + answer embedded; `Source:` URLs stored as metadata. |
+| Same doc, "Example Questions and Grounded Answers" | 15 | One per numbered Q&A. Examples that only describe bot behavior ("The chatbot should...") are skipped; the response rules cover them. An example without its own URL takes the source of the curated chunk it overlaps with most (run `python content.py` to see the matches). |
 | Staff directory (`scraped_pages/eng_auburn_edu_admin_development_index_html.txt`) | 14 | One per person, role description first. |
 | Department campaign pages (`scraped_pages/give_auburn_edu_campaigns_*.txt`) | 10 | Only the department-specific paragraphs; shared boilerplate dropped. The department's advancement liaison (parsed from the directory) is appended. |
 
