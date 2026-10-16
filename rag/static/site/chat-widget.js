@@ -11,11 +11,16 @@
  * localStorage, sessionStorage, or cookies, and it is gone on reload, navigation, tab close, or
  * "Clear". Recent turns are sent with each request so the assistant can follow up; the server
  * uses them for that answer and does not store them.
+ *
+ * The one thing a visitor can choose to send for storage is the follow-up form (name, email,
+ * optional phone and message), posted to /contact only when they tick the consent box and submit.
+ * The conversation is not attached to it.
  */
 (function () {
   const script = document.currentScript;
   const ENDPOINT = (script && script.dataset.endpoint) ||
     new URL('/chat', script ? script.src : location.href).href;
+  const CONTACT_ENDPOINT = (script && script.dataset.contactEndpoint) || new URL('contact', ENDPOINT).href;
   const FALLBACK_REPLY = "I'm having trouble reaching the assistant right now. For help, please contact the Auburn Engineering giving office at augiving@auburn.edu or 334-844-1427.";
   const TEASER_KEY = 'aug-chat-teaser-dismissed'; // the only thing stored: a yes/no UI flag
   const HISTORY_SENT = 6; // most recent messages sent with each request
@@ -74,6 +79,30 @@
     padding:7px 12px;border-radius:20px;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
   #aug-chat .quick button:hover{background:#122e52;border-color:var(--orange);color:#fff;}
   #aug-chat .typing .bubble{color:#9aabc4;}
+  #aug-chat .card{margin-top:8px;padding:11px 13px;border:1px solid #2e4c71;border-radius:12px;background:#0c1f3c;color:#edeff3;font-size:14px;}
+  #aug-chat .card .who{font-weight:700;}
+  #aug-chat .card .role{color:#9aabc4;font-size:12.5px;margin-bottom:5px;}
+  #aug-chat .card a{color:#ffb48a;display:block;overflow-wrap:anywhere;}
+  #aug-chat .card button,#aug-chat .lead .actions button{margin-top:9px;background:var(--orange);border:none;color:#fff;font:inherit;
+    font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;cursor:pointer;}
+  #aug-chat .card button:hover,#aug-chat .lead .actions button:hover{background:var(--orange-hi);}
+  #aug-chat .lead{margin-top:8px;padding:13px;border:1px solid #2e4c71;border-radius:12px;background:#0c1f3c;color:#edeff3;
+    font-size:13.5px;display:flex;flex-direction:column;gap:8px;}
+  #aug-chat .lead .title{font-weight:700;font-size:14px;}
+  #aug-chat .lead label{display:flex;flex-direction:column;gap:3px;color:#b9c4d6;font-size:12.5px;}
+  #aug-chat .lead input[type=text],#aug-chat .lead input[type=email],#aug-chat .lead input[type=tel],#aug-chat .lead textarea{
+    background:#071830;border:1px solid #2e4c71;border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:7px 9px;width:100%;}
+  #aug-chat .lead textarea{resize:vertical;min-height:54px;}
+  #aug-chat .lead input:focus,#aug-chat .lead textarea:focus{outline:2px solid var(--orange);outline-offset:1px;}
+  #aug-chat .lead .row{display:flex;gap:8px;}
+  #aug-chat .lead .row label{flex:1;min-width:0;}
+  #aug-chat .lead .consent{flex-direction:row;align-items:flex-start;gap:8px;color:#cbd6e6;line-height:1.35;}
+  #aug-chat .lead .consent input{margin-top:2px;flex:none;}
+  #aug-chat .lead .actions{display:flex;gap:8px;align-items:center;}
+  #aug-chat .lead .actions button{margin-top:0;}
+  #aug-chat .lead .actions button:disabled{opacity:.5;cursor:default;}
+  #aug-chat .lead .actions .cancel{background:transparent;border:1px solid #2e4c71;color:#cbd6e6;font-weight:400;}
+  #aug-chat .lead .error{color:#ffb48a;font-size:12.5px;}
   #aug-chat .input-row{border-top:1px solid rgba(255,255,255,.08);padding:12px 14px;}
   #aug-chat .field{display:flex;align-items:center;background:#0c1f3c;border-radius:10px;padding:6px 8px 6px 14px;gap:8px;}
   #aug-chat .field input{flex:1;background:none;border:none;outline:none;color:#fff;font:inherit;font-size:15px;padding:8px 0;min-width:0;}
@@ -184,6 +213,8 @@
     meta.className = 'meta';
     meta.textContent = entry.from === 'bot' ? 'Giving Assistant' : 'You';
     wrap.append(meta);
+    (entry.contacts || []).forEach((c) => wrap.append(contactCard(c, wrap)));
+    if (entry.offerContact) wrap.append(leadForm(''));
     if (withQuick) {
       const q = document.createElement('div');
       q.className = 'quick';
@@ -198,6 +229,104 @@
     messages.append(wrap);
     messages.scrollTop = messages.scrollHeight;
     return wrap;
+  }
+
+  // ---- Staff contact cards and the follow-up form ----
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function contactCard(c, wrap) {
+    const card = el('div', 'card');
+    card.append(el('div', 'who', c.name), el('div', 'role', c.title));
+    if (c.email) {
+      const a = el('a', '', c.email);
+      a.href = 'mailto:' + c.email;
+      card.append(a);
+    }
+    if (c.phone) {
+      const a = el('a', '', c.phone);
+      a.href = 'tel:' + c.phone.replace(/\D/g, '');
+      card.append(a);
+    }
+    const b = el('button', '', 'Ask ' + c.name.split(' ')[0] + ' to contact me');
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      if (wrap.querySelector('.lead')) return;
+      wrap.append(leadForm(c.name));
+      messages.scrollTop = messages.scrollHeight;
+    });
+    card.append(b);
+    return card;
+  }
+
+  function field(labelText, type, name, required, max) {
+    const label = el('label', '', labelText);
+    const control = document.createElement(type === 'textarea' ? 'textarea' : 'input');
+    if (type !== 'textarea') control.type = type;
+    control.name = name; control.required = required; control.maxLength = max;
+    label.append(control);
+    return label;
+  }
+
+  // staff: the routed staff member's name, or '' for a general request to the giving office.
+  function leadForm(staff) {
+    const form = el('form', 'lead');
+    form.noValidate = true;
+    const names = el('div', 'row');
+    names.append(field('First name', 'text', 'first_name', true, 80), field('Last name', 'text', 'last_name', true, 80));
+    const consent = el('label', 'consent');
+    const box = document.createElement('input');
+    box.type = 'checkbox'; box.name = 'consent'; box.required = true;
+    consent.append(box, 'I agree that Auburn Engineering Advancement may store these details and contact me.');
+    const error = el('div', 'error');
+    error.setAttribute('role', 'alert');
+    const actions = el('div', 'actions');
+    const submit = el('button', '', 'Send request');
+    submit.type = 'submit';
+    const cancel = el('button', 'cancel', 'Cancel');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => form.remove());
+    actions.append(submit, cancel);
+    form.append(
+      el('div', 'title', staff ? 'Ask ' + staff + ' to follow up' : 'Request a follow-up'),
+      names,
+      field('Email', 'email', 'email', true, 254),
+      field('Phone (optional)', 'tel', 'phone', false, 30),
+      field('What would you like to discuss? (optional)', 'textarea', 'message', false, 1000),
+      consent, error, actions);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) {
+        error.textContent = box.checked ? 'Please enter your name and a valid email address.'
+          : 'Please tick the box so we can store your details and contact you.';
+        return;
+      }
+      const data = Object.fromEntries(new FormData(form));
+      data.consent = true; data.staff = staff;
+      submit.disabled = true; error.textContent = '';
+      try {
+        const res = await fetch(CONTACT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Backend returned ' + res.status);
+        // Replace the form so the details don't stay on screen or in page memory.
+        form.replaceWith(el('div', 'card', 'Thank you, ' + data.first_name + '. Your request for ' +
+          (staff || 'the Engineering Advancement team') + ' has been received.'));
+      } catch (err) {
+        console.error('Follow-up request failed:', err);
+        submit.disabled = false;
+        error.textContent = 'That did not go through. Please try again, or contact augiving@auburn.edu or 334-844-1427.';
+      }
+    });
+    return form;
   }
 
   function renderAll() {
@@ -217,7 +346,8 @@
       });
       if (!res.ok) throw new Error('Backend returned ' + res.status);
       const data = await res.json();
-      return { from: 'bot', text: (data.answer || '').trim() || FALLBACK_REPLY, sources: data.sources || [] };
+      return { from: 'bot', text: (data.answer || '').trim() || FALLBACK_REPLY, sources: data.sources || [],
+        contacts: data.contacts || [], offerContact: !!data.offer_contact };
     } catch (err) {
       console.error('Giving assistant request failed:', err);
       return { from: 'bot', text: FALLBACK_REPLY, sources: [], failed: true };

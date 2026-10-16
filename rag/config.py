@@ -30,6 +30,10 @@ HISTORY_MESSAGES = int(os.environ.get("HISTORY_MESSAGES", "6"))
 # if nothing is closer, the bot returns the fallback without calling the chat model.
 MAX_DISTANCE = float(os.environ.get("MAX_DISTANCE", "0.5"))
 
+# Follow-up requests left through the widget's contact form, one JSON object per line.
+CONTACT_REQUESTS_FILE = Path(os.environ.get("CONTACT_REQUESTS_FILE",
+                                            RAG_DIR / "data" / "contact_requests.jsonl"))
+
 FALLBACK_EMAIL = "augiving@auburn.edu"
 FALLBACK_PHONE = "334-844-1427"
 FALLBACK_CONTACT = f"the Auburn Engineering giving office at {FALLBACK_EMAIL} or {FALLBACK_PHONE}"

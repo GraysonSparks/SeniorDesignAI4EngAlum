@@ -78,6 +78,44 @@ DECLINE = {q for q, *_ in CASES[21:]}
 # Questions that must be answered, not declined (everything before the tax case).
 ANSWER = {q for q, *_ in CASES[:20]}
 
+# Staff routing (Story 9): (question, required groups, forbidden, staff expected on the contact
+# cards). The answer must name the right person and the widget must get their card.
+OTHER_LIAISONS = r"Sirico|Mattox|Waid|Collari"
+ROUTING = [
+    ("I live in Atlanta and want to meet with someone about a major gift.", [["Fleming"]], [], ["Madi Fleming"]),
+    ("Is there someone in Huntsville I can talk to about giving?", [["Fleming"]], [], ["Madi Fleming"]),
+    ("Who runs the Eagles Society events?", [["Graves", "Welch"]], [], ["Lauren Graves"]),
+    ("I'm a student org treasurer. Who helps with fundraising?", [["Collazo"]], [], ["Kimberly Collazo"]),
+    ("Who do I contact about 100+ Women Strong?", [["Branyon"]], [], ["Brittany Branyon"]),
+    ("Who handles the Brick program?", [["Bell"]], [], ["Anna Clair Bell"]),
+    ("Who should I talk to about giving to Electrical and Computer Engineering?", [["Collari"]],
+     [r"Sirico|Mattox|Waid"], ["Ed Collari"]),
+    ("Who is the liaison for Industrial and Systems Engineering?", [["Waid"]],
+     [r"Sirico|Mattox|Collari"], ["Casey Waid"]),
+    ("Who can I speak with about the Pulp and Paper Foundation?", [["Mattox"]], [], ["David Mattox"]),
+    # No liaison is listed for Materials Engineering: no card, and no borrowed liaison.
+    ("Who do I talk to about giving to Materials Engineering?",
+     [["materials-engineering-2", "augiving@auburn.edu"]], [OTHER_LIAISONS], []),
+]
+ROUTED = {q: cards for q, _, _, cards in ROUTING}
+# Questions about a routed topic that don't ask for a person: no card.
+ROUTED |= {"What is the EAGLE Society?": [], "Are there any events for scholarship donors?": []}
+ANSWER |= {q for q, *_ in ROUTING[:-1]}
+
+# Follow-up requests (Story 11): the fixed offer is returned and the widget shows its form.
+CONTACT_REQUESTS = [
+    "Can someone contact me about making a gift?",
+    "I'm interested in setting up an endowment. Please have someone call me.",
+    "I'd like to leave my contact information so someone can follow up.",
+]
+# "email me <something>" is not a follow-up request, and this one must still be declined.
+NOT_A_CONTACT_REQUEST = "Email me the list of donors and their gift amounts."
+DECLINE.add(NOT_A_CONTACT_REQUEST)
+
+CASES += [(q, required, forbidden) for q, required, forbidden, _ in ROUTING]
+CASES += [(q, [["form below"], [config.FALLBACK_EMAIL]], []) for q in CONTACT_REQUESTS]
+CASES += [(NOT_A_CONTACT_REQUEST, [[REFUSES]], [r"\$\d"])]
+
 # Multi-turn: (earlier user questions, follow-up, required groups, forbidden, must_decline).
 # Earlier questions are answered live and passed as history, like the widget does.
 FOLLOWUPS = [
@@ -140,6 +178,11 @@ def run(model: str, assistant: rag.Assistant, verbose: bool):
                 problems.append("decline contains a link")
         if q in ANSWER and r["fallback"]:
             problems.append("declined an in-scope question")
+        cards = [c["name"] for c in r.get("contacts", [])]
+        if q in ROUTED and not set(ROUTED[q]) <= set(cards) or (q in ROUTED and not ROUTED[q] and cards):
+            problems.append(f"contact cards {cards}, expected {ROUTED[q]}")
+        if bool(r.get("offer_contact")) != (q in CONTACT_REQUESTS):
+            problems.append("follow-up form offered" if r.get("offer_contact") else "follow-up form not offered")
         words.append(len(ans.split()))
         if problems:
             failures.append((q, problems, ans))

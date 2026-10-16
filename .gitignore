@@ -1,5 +1,7 @@
 # Rebuilt by `python rag/ingest.py`
 rag/chroma_db/
+# Visitor follow-up requests (personal data); never commit
+rag/data/
 __pycache__/
 *.pyc
 .venv/

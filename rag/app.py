@@ -3,6 +3,7 @@
     uvicorn app:app --port 8000
 
 Then open http://localhost:8000/ for the test site (static/site/), or POST {"message": "..."} to /chat.
+POST /contact stores a follow-up request from the widget's contact form (see leads.py).
 """
 
 import os
@@ -11,9 +12,10 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import config
+import leads
 from rag import Assistant
 
 app = FastAPI(title="AI4EngAlum Giving Assistant")
@@ -40,10 +42,36 @@ class ChatRequest(BaseModel):
     history: list[Turn] = Field(default_factory=list, max_length=20)
 
 
+class StaffContact(BaseModel):
+    name: str
+    title: str
+    email: str | None
+    phone: str | None
+    topic: str
+
+
 class ChatResponse(BaseModel):
     answer: str
     sources: list[str]
     fallback: bool
+    # Staff the question was routed to; the widget shows them as contact cards.
+    contacts: list[StaffContact] = Field(default_factory=list)
+    # True when the visitor asked to be contacted; the widget shows its follow-up form.
+    offer_contact: bool = False
+
+
+class ContactRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
+    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    phone: str = Field(default="", max_length=30)
+    message: str = Field(default="", max_length=1000)
+    # Staff member the visitor was routed to, if they opened the form from a contact card.
+    staff: str = Field(default="", max_length=80)
+    # The form's consent checkbox. Nothing is stored without it.
+    consent: bool
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -55,7 +83,20 @@ def chat(req: ChatRequest, response: Response):
     except Exception as e:  # Ollama down, collection missing, etc.
         raise HTTPException(status_code=503, detail=f"Assistant unavailable: {e}")
     return ChatResponse(answer=result["answer"], sources=result["sources"],
-                        fallback=result["fallback"])
+                        fallback=result["fallback"], contacts=result.get("contacts", []),
+                        offer_contact=result.get("offer_contact", False))
+
+
+@app.post("/contact")
+def contact(req: ContactRequest, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    if not req.consent:
+        raise HTTPException(status_code=422, detail="Consent is required to store a request.")
+    if req.staff and req.staff not in {p["name"] for r in assistant.router.routes
+                                       for p in r["people"]}:
+        raise HTTPException(status_code=422, detail="Unknown staff member.")
+    leads.save_request(req.model_dump(exclude={"consent"}))
+    return {"ok": True}
 
 
 @app.post("/reload-rules")
