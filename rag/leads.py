@@ -11,15 +11,17 @@ import threading
 from datetime import datetime, timezone
 
 import config
+import notify
 
 _lock = threading.Lock()
 
 
-def save_request(request: dict) -> None:
-    """Append one request with a UTC timestamp."""
+def save_request(request: dict, staff_emails: dict[str, str] | None = None) -> dict:
+    """Append one request with a UTC timestamp, then notify staff (Story 10, see notify.py).
+    staff_emails maps directory names to emails, for NOTIFY_ROUTED_STAFF."""
     record = {"received": datetime.now(timezone.utc).isoformat(timespec="seconds"), **request}
     config.CONTACT_REQUESTS_FILE.parent.mkdir(parents=True, exist_ok=True)
     with _lock, open(config.CONTACT_REQUESTS_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
-    # Story 10 (notify Advancement staff of a new request) hooks in here once a delivery
-    # channel exists on the hosting side.
+    notify.notify(record, staff_emails)
+    return record

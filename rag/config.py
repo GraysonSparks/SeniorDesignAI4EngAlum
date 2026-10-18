@@ -34,6 +34,18 @@ MAX_DISTANCE = float(os.environ.get("MAX_DISTANCE", "0.5"))
 CONTACT_REQUESTS_FILE = Path(os.environ.get("CONTACT_REQUESTS_FILE",
                                             RAG_DIR / "data" / "contact_requests.jsonl"))
 
+# Staff notification for new follow-up requests (Story 10, see notify.py): none | email | webhook.
+NOTIFY_CHANNEL = os.environ.get("NOTIFY_CHANNEL", "none").lower()
+NOTIFY_TO = [a.strip() for a in os.environ.get("NOTIFY_TO", "").split(",") if a.strip()]
+NOTIFY_FROM = os.environ.get("NOTIFY_FROM", "giving-assistant@eng.auburn.edu")
+NOTIFY_ROUTED_STAFF = os.environ.get("NOTIFY_ROUTED_STAFF", "0") == "1"
+NOTIFY_WEBHOOK_URL = os.environ.get("NOTIFY_WEBHOOK_URL", "")
+SMTP_HOST = os.environ.get("SMTP_HOST", "localhost")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "25"))
+SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "0") == "1"
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+
 FALLBACK_EMAIL = "augiving@auburn.edu"
 FALLBACK_PHONE = "334-844-1427"
 FALLBACK_CONTACT = f"the Auburn Engineering giving office at {FALLBACK_EMAIL} or {FALLBACK_PHONE}"

@@ -12,6 +12,9 @@
  * "Clear". Recent turns are sent with each request so the assistant can follow up; the server
  * uses them for that answer and does not store them.
  *
+ * The widget labels itself as AI in the header, greeting and reply labels. When the assistant can't
+ * answer a giving question it offers the follow-up form instead of a dead end.
+ *
  * The one thing a visitor can choose to send for storage is the follow-up form (name, email,
  * optional phone and message), posted to /contact only when they tick the consent box and submit.
  * The conversation is not attached to it.
@@ -78,6 +81,11 @@
   #aug-chat .quick button{background:transparent;border:1px solid #2e4c71;color:#cbd6e6;font:inherit;font-size:13px;
     padding:7px 12px;border-radius:20px;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
   #aug-chat .quick button:hover{background:#122e52;border-color:var(--orange);color:#fff;}
+  #aug-chat .followup button{margin-top:8px;background:transparent;border:1px solid var(--orange);color:#ffb48a;font:inherit;
+    font-size:13px;padding:7px 12px;border-radius:20px;cursor:pointer;}
+  #aug-chat .followup button:hover{background:var(--orange);color:#fff;}
+  #aug-chat .ai-tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:4px;background:rgba(255,255,255,.12);
+    color:#dfe6f1;font-size:11px;font-weight:600;letter-spacing:.04em;vertical-align:2px;}
   #aug-chat .typing .bubble{color:#9aabc4;}
   #aug-chat .card{margin-top:8px;padding:11px 13px;border:1px solid #2e4c71;border-radius:12px;background:#0c1f3c;color:#edeff3;font-size:14px;}
   #aug-chat .card .who{font-weight:700;}
@@ -123,7 +131,7 @@
   @media (prefers-reduced-motion:reduce){#aug-chat .teaser,#aug-chat .panel,#aug-chat .toggle{transition:none;}}`;
 
   const BUBBLE_ICON = '<path d="M21 11.5c0 4.14-4.03 7.5-9 7.5-1.06 0-2.08-.15-3.02-.43L4 20l1.06-3.18C4.4 15.6 4 14.6 4 13.5 4 9.36 8.03 6 13 6s9 3.36 9 5.5z"/>';
-  const GREETING = "Hi! I'm the Auburn Engineering giving assistant. I can help with ways to give, supporting a specific department, the EAGLE Society, or finding the right person on our advancement team.";
+  const GREETING = "Hi! I'm the Auburn Engineering giving assistant, an AI tool. I can help with ways to give, supporting a specific department, the EAGLE Society, or finding the right person on our advancement team.";
   const QUICK = ['How do I make a gift?', 'Can I give to my department?', 'Who can I talk to about a gift?'];
 
   const root = document.createElement('div');
@@ -144,7 +152,7 @@
       <div class="resize" title="Drag to resize" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M14 2 L2 14 M9 2 L2 9 M14 7 L7 14"/></svg></div>
       <div class="head">
         <div class="avatar"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${BUBBLE_ICON}</svg></div>
-        <div class="head-text"><div class="name">Engineering Giving Assistant</div><div class="status">Online now</div></div>
+        <div class="head-text"><div class="name">Engineering Giving Assistant<span class="ai-tag">AI</span></div><div class="status">AI assistant · Online now</div></div>
         <button class="close" aria-label="Close chat">&times;</button>
       </div>
       <div class="messages" aria-live="polite"></div>
@@ -153,7 +161,7 @@
           <input type="text" placeholder="Ask about giving to Auburn Engineering..." autocomplete="off" maxlength="1000" aria-label="Your question">
           <button class="send" aria-label="Send message"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
         </div>
-        <div class="foot"><span>Answers come from official Auburn Engineering giving pages. Verify details at the linked source.</span><button class="reset" title="Clear this conversation">Clear</button></div>
+        <div class="foot"><span>AI-generated answers from official Auburn Engineering giving pages. Verify details at the linked source.</span><button class="reset" title="Clear this conversation">Clear</button></div>
       </div>
     </div>`;
   document.body.appendChild(root);
@@ -211,10 +219,11 @@
     }
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = entry.from === 'bot' ? 'Giving Assistant' : 'You';
+    meta.textContent = entry.from === 'bot' ? 'Giving Assistant (AI)' : 'You';
     wrap.append(meta);
     (entry.contacts || []).forEach((c) => wrap.append(contactCard(c, wrap)));
     if (entry.offerContact) wrap.append(leadForm(''));
+    else if (entry.offerFollowup) wrap.append(followupOffer(wrap));
     if (withQuick) {
       const q = document.createElement('div');
       q.className = 'quick';
@@ -261,6 +270,19 @@
     });
     card.append(b);
     return card;
+  }
+
+  // Shown under a reply the assistant couldn't answer: one button that opens the follow-up form.
+  function followupOffer(wrap) {
+    const box = el('div', 'followup');
+    const b = el('button', '', 'Have a staff member follow up with me');
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      box.replaceWith(leadForm(''));
+      messages.scrollTop = messages.scrollHeight;
+    });
+    box.append(b);
+    return box;
   }
 
   function field(labelText, type, name, required, max) {
@@ -347,7 +369,8 @@
       if (!res.ok) throw new Error('Backend returned ' + res.status);
       const data = await res.json();
       return { from: 'bot', text: (data.answer || '').trim() || FALLBACK_REPLY, sources: data.sources || [],
-        contacts: data.contacts || [], offerContact: !!data.offer_contact };
+        contacts: data.contacts || [], offerContact: !!data.offer_contact,
+        offerFollowup: !!data.offer_followup };
     } catch (err) {
       console.error('Giving assistant request failed:', err);
       return { from: 'bot', text: FALLBACK_REPLY, sources: [], failed: true };

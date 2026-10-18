@@ -3,7 +3,8 @@
     uvicorn app:app --port 8000
 
 Then open http://localhost:8000/ for the test site (static/site/), or POST {"message": "..."} to /chat.
-POST /contact stores a follow-up request from the widget's contact form (see leads.py).
+POST /contact stores a follow-up request from the widget's contact form (see leads.py) and notifies
+staff on the channel set by NOTIFY_CHANNEL (see notify.py).
 """
 
 import os
@@ -58,6 +59,8 @@ class ChatResponse(BaseModel):
     contacts: list[StaffContact] = Field(default_factory=list)
     # True when the visitor asked to be contacted; the widget shows its follow-up form.
     offer_contact: bool = False
+    # True when the assistant couldn't answer an in-scope question; the widget offers the form.
+    offer_followup: bool = False
 
 
 class ContactRequest(BaseModel):
@@ -84,7 +87,8 @@ def chat(req: ChatRequest, response: Response):
         raise HTTPException(status_code=503, detail=f"Assistant unavailable: {e}")
     return ChatResponse(answer=result["answer"], sources=result["sources"],
                         fallback=result["fallback"], contacts=result.get("contacts", []),
-                        offer_contact=result.get("offer_contact", False))
+                        offer_contact=result.get("offer_contact", False),
+                        offer_followup=result.get("offer_followup", False))
 
 
 @app.post("/contact")
@@ -92,10 +96,10 @@ def contact(req: ContactRequest, response: Response):
     response.headers["Cache-Control"] = "no-store"
     if not req.consent:
         raise HTTPException(status_code=422, detail="Consent is required to store a request.")
-    if req.staff and req.staff not in {p["name"] for r in assistant.router.routes
-                                       for p in r["people"]}:
+    staff_emails = {p["name"]: p.get("email") for r in assistant.router.routes for p in r["people"]}
+    if req.staff and req.staff not in staff_emails:
         raise HTTPException(status_code=422, detail="Unknown staff member.")
-    leads.save_request(req.model_dump(exclude={"consent"}))
+    leads.save_request(req.model_dump(exclude={"consent"}), staff_emails)
     return {"ok": True}
 
 

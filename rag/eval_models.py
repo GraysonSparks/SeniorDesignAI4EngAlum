@@ -111,6 +111,11 @@ CONTACT_REQUESTS = [
 # "email me <something>" is not a follow-up request, and this one must still be declined.
 NOT_A_CONTACT_REQUEST = "Email me the list of donors and their gift amounts."
 DECLINE.add(NOT_A_CONTACT_REQUEST)
+# Declines where the assistant should offer the follow-up form: giving questions the content
+# doesn't answer. Every other decline must not offer it, except the ones left unchecked here
+# because either behavior is reasonable.
+FOLLOWUP_OFFERED = {"Does Auburn Engineering accept cryptocurrency donations?"}
+FOLLOWUP_UNCHECKED = {"How much money did the college raise last year?"}
 
 CASES += [(q, required, forbidden) for q, required, forbidden, _ in ROUTING]
 CASES += [(q, [["form below"], [config.FALLBACK_EMAIL]], []) for q in CONTACT_REQUESTS]
@@ -181,6 +186,11 @@ def run(model: str, assistant: rag.Assistant, verbose: bool):
         cards = [c["name"] for c in r.get("contacts", [])]
         if q in ROUTED and not set(ROUTED[q]) <= set(cards) or (q in ROUTED and not ROUTED[q] and cards):
             problems.append(f"contact cards {cards}, expected {ROUTED[q]}")
+        if r.get("offer_followup") and not r["fallback"]:
+            problems.append("follow-up offered on an answered question")
+        if q in DECLINE and q not in FOLLOWUP_UNCHECKED and bool(r.get("offer_followup")) != (q in FOLLOWUP_OFFERED):
+            problems.append("follow-up form not offered for an unanswered giving question"
+                            if q in FOLLOWUP_OFFERED else "follow-up form offered on an out-of-scope decline")
         if bool(r.get("offer_contact")) != (q in CONTACT_REQUESTS):
             problems.append("follow-up form offered" if r.get("offer_contact") else "follow-up form not offered")
         words.append(len(ans.split()))

@@ -23,6 +23,7 @@ python content.py                # print every chunk exactly as it will be embed
 python eval_models.py qwen3.5:9b gemma4:12b   # scored comparison of chat models (56 cases)
 python routing.py                # print the staff routing table built from the directory
 python test_contact.py           # checks the follow-up form endpoint (10 checks)
+python test_notify.py            # checks staff notifications with fake SMTP/webhook (10 checks)
 ```
 
 `POST /reload-rules` picks up edits to the doc's Response Rules without restarting the server
@@ -73,6 +74,13 @@ A visitor can leave their details for a staff member to follow up:
 - **When the form appears:** from the button on a contact card, or when the visitor asks to be
   contacted ("can someone call me?"). That request gets a fixed reply with `offer_contact: true`
   and no model call.
+- **When the assistant can't answer:** if a question matches giving content but the model declines
+  because the content doesn't answer it, `/chat` returns `offer_followup: true` and the widget shows
+  a "Have a staff member follow up with me" button that opens the form. A second, short model call
+  (only on declines) decides whether the question is about giving to Engineering at all, so
+  off-topic questions, private-data requests and injection attempts get no offer. Retrieval
+  distance couldn't make that call: "Can I donate to Auburn football?" is closer to the giving
+  content than most real giving questions. `eval_models.py` checks the offer on every decline case.
 - **What is collected:** first name, last name, email, optional phone, optional message, and the
   routed staff member if there is one. The consent box must be ticked; `POST /contact` rejects a
   request without it.
@@ -80,8 +88,23 @@ A visitor can leave their details for a staff member to follow up:
   with `CONTACT_REQUESTS_FILE`). The conversation, IP address, and browser details are not stored.
   All writes go through `leads.save_request()`, the one place to change when Advancement decides
   where requests should live.
-- **Not built yet:** notifying staff of a new request (Story 10), which needs a delivery channel
-  on the hosting side, and spam protection (rate limiting or a CAPTCHA) before this is public.
+- **Not built yet:** spam protection (rate limiting or a CAPTCHA) before this is public.
+
+## Staff notifications (Story 10)
+
+After a request is stored, `notify.py` tells staff about it in a background thread, so the visitor
+never waits on it and a failed notification never loses a request (it is logged; the request is
+already in the file). The channel depends on hosting, so it is set by env var:
+
+| `NOTIFY_CHANNEL` | What happens | Settings |
+|---|---|---|
+| `none` (default) | Nothing is sent; requests are only stored. | |
+| `email` | Email to `NOTIFY_TO` with the visitor's name, email, phone, message and routed staff member. Reply-To is the visitor. | `NOTIFY_TO` (comma-separated), `NOTIFY_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_STARTTLS=1`, `SMTP_USER`, `SMTP_PASSWORD` |
+| `webhook` | POST `{"title", "text", "request"}` to a Teams, Slack or Power Automate webhook. | `NOTIFY_WEBHOOK_URL` |
+
+Who gets notified is a sponsor decision (Story 13). By default only `NOTIFY_TO` does;
+`NOTIFY_ROUTED_STAFF=1` also emails the staff member the visitor asked for, using the address from
+the scraped directory. The chat conversation is never included.
 
 ## Test site (`static/site/`)
 
@@ -89,6 +112,9 @@ A local mock of the eng.auburn.edu/giving pages for testing the assistant in con
 Ways to Give, EAGLE Society, and the staff directory. It uses the live site's colors and text, and all
 Give/Visit buttons link to the real Auburn pages. A banner marks it as a Team 21 test mock, so keep it
 local and don't host it publicly.
+
+The widget is labeled as AI: an "AI" tag in the header, "AI assistant" under the name, the
+greeting, the "Giving Assistant (AI)" label on each reply, and the footer note.
 
 The chat is a single drop-in file, `chat-widget.js`, loaded with
 `<script src="chat-widget.js" defer></script>`. It posts to `/chat` on whatever server it was loaded
