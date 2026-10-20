@@ -111,11 +111,11 @@ CONTACT_REQUESTS = [
 # "email me <something>" is not a follow-up request, and this one must still be declined.
 NOT_A_CONTACT_REQUEST = "Email me the list of donors and their gift amounts."
 DECLINE.add(NOT_A_CONTACT_REQUEST)
-# Declines where the assistant should offer the follow-up form: giving questions the content
-# doesn't answer. Every other decline must not offer it, except the ones left unchecked here
-# because either behavior is reasonable.
-FOLLOWUP_OFFERED = {"Does Auburn Engineering accept cryptocurrency donations?"}
-FOLLOWUP_UNCHECKED = {"How much money did the college raise last year?"}
+# Every decline offers the follow-up form under the main contact's card. Only giving questions
+# the content doesn't answer are reported as unanswered; the others must not be, except the ones
+# left unchecked here because either behavior is reasonable.
+REPORTED = {"Does Auburn Engineering accept cryptocurrency donations?"}
+REPORT_UNCHECKED = {"How much money did the college raise last year?"}
 
 CASES += [(q, required, forbidden) for q, required, forbidden, _ in ROUTING]
 CASES += [(q, [["form below"], [config.FALLBACK_EMAIL]], []) for q in CONTACT_REQUESTS]
@@ -190,9 +190,11 @@ def run(model: str, assistant: rag.Assistant, verbose: bool):
             problems.append(f"contact cards {cards}, expected {ROUTED[q]}")
         if r.get("offer_followup") and not r["fallback"]:
             problems.append("follow-up offered on an answered question")
-        if q in DECLINE and q not in FOLLOWUP_UNCHECKED and bool(r.get("offer_followup")) != (q in FOLLOWUP_OFFERED):
-            problems.append("follow-up form not offered for an unanswered giving question"
-                            if q in FOLLOWUP_OFFERED else "follow-up form offered on an out-of-scope decline")
+        if q in DECLINE and not r.get("offer_followup"):
+            problems.append("decline without the follow-up offer")
+        if q in DECLINE and q not in REPORT_UNCHECKED and bool(r.get("report_unanswered")) != (q in REPORTED):
+            problems.append("unanswered giving question not reported" if q in REPORTED
+                            else "out-of-scope decline reported as unanswered")
         if r.get("offer_followup") and cards != [config.FALLBACK_NAME]:
             problems.append(f"follow-up offered without the main contact's card (cards {cards})")
         if bool(r.get("offer_contact")) != (q in CONTACT_REQUESTS):

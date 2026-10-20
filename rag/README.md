@@ -42,8 +42,9 @@ The doc's **Recommended Response Rules** become the core of the system prompt. `
 fixed instructions for grounding, the tax/legal refusal, prompt-injection handling, and the fallback contact.
 
 **Main contact.** Advancement chose Ed Collari (Executive Director of Development) as the main point of
-contact instead of the general giving office. Every reply the assistant can't answer names him, and he
-receives every notification. His details are `FALLBACK_*` in `config.py`; `python routing.py` warns if
+contact instead of the general giving office. Every dead end, and every "can someone contact me?",
+gives his details first and then offers to have him reach out (the follow-up form) as the second
+option. He also receives every notification. His details are `FALLBACK_*` in `config.py`; `python routing.py` warns if
 they stop matching his staff directory entry. Answers taken from the content doc still give whatever
 contact the doc lists (for example the giving office for bank drafts).
 
@@ -77,14 +78,17 @@ that is matched against any question asking for a person:
 A visitor can leave their details for a staff member to follow up:
 
 - **When the form appears:** from the button on a contact card, or when the visitor asks to be
-  contacted ("can someone call me?"). That request gets a fixed reply with `offer_contact: true`
-  and no model call.
+  contacted ("can someone call me?"). That request gets a fixed reply with Ed's details first, then
+  the form (`offer_contact: true`), and no model call.
 - **When the assistant can't answer:** whether the model declines or no content is close enough to
-  ask it, a giving question gets `offer_followup: true` and Ed Collari's contact card: his details,
-  then an "Ask Ed to contact me" button that opens the form. A second, short model call (only on
-  dead ends) decides whether the question is about giving to Engineering at all, so off-topic
-  questions, private-data requests and injection attempts get his contact in the text but no card
-  or form. Retrieval
+  ask it, the reply gives Ed's details, and `/chat` returns `offer_followup: true` with his contact
+  card, whose "Ask Ed to contact me" button opens the form. This applies to every dead end,
+  off-topic ones included. The model's own "contact the giving team" sentences are removed, so Ed
+  is the only contact given.
+- **Which dead ends are reported to Ed:** a second, short model call (only on dead ends) decides
+  whether the question is about giving to Engineering at all. Only those are emailed as unanswered
+  questions (`report_unanswered`), so off-topic questions, private-data requests and injection
+  attempts stay out of his inbox. Retrieval
   distance couldn't make that call: "Can I donate to Auburn football?" is closer to the giving
   content than most real giving questions. `eval_models.py` checks the offer on every decline case.
 - **What is collected:** first name, last name, email, optional phone, optional message, and the
@@ -109,8 +113,7 @@ A visitor can leave their details for a staff member to follow up:
 ## Unanswered-question emails
 
 Advancement wanted to see which donor questions the assistant can't answer, without the project
-storing conversations. When a giving question hits a dead end (the same ones that get the follow-up
-offer), `/chat` returns it in `unanswered` with an HMAC signature. The widget keeps those in page
+storing conversations. When a giving question hits a dead end, `/chat` returns it in `unanswered` with an HMAC signature. The widget keeps those in page
 memory and posts them to `POST /unanswered` once the visitor is done: on closing or clearing the
 chat, leaving the page, or after 10 minutes without a new one. The server checks each signature,
 so only questions the assistant really failed on are sent, then emails them to `NOTIFY_TO` (Ed).

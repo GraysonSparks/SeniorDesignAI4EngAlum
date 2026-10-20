@@ -13,8 +13,8 @@
  * uses them for that answer and does not store them.
  *
  * The widget labels itself as AI in the header, greeting and reply labels. When the assistant can't
- * answer a giving question it shows Ed Collari's contact card and offers the follow-up form
- * instead of a dead end.
+ * answer, it gives Ed Collari's contact details first, then his card's "Ask Ed to contact me"
+ * button as the second option, instead of a dead end.
  *
  * Those unanswered questions (only the question text, already signed by /chat) are kept in page
  * memory and sent to /unanswered once the visitor is done: when they close or clear the chat,

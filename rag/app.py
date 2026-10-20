@@ -139,7 +139,7 @@ def chat(req: ChatRequest, response: Response):
     except Exception as e:  # Ollama down, collection missing, etc.
         raise HTTPException(status_code=503, detail=f"Assistant unavailable: {e}")
     unanswered = None
-    if result.get("offer_followup"):
+    if result.get("report_unanswered"):
         q = result["search_query"][:1000]  # the question with follow-ups like "that" resolved
         unanswered = Unanswered(question=q, token=sign(q))
     return ChatResponse(answer=result["answer"], sources=result["sources"],

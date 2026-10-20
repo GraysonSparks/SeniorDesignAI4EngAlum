@@ -34,17 +34,21 @@ MAX_DISTANCE = float(os.environ.get("MAX_DISTANCE", "0.5"))
 CONTACT_REQUESTS_FILE = Path(os.environ.get("CONTACT_REQUESTS_FILE",
                                             RAG_DIR / "data" / "contact_requests.jsonl"))
 
-# The sponsor's choice of main point of contact: named in every dead-end reply, offered as the
-# follow-up card, and the default recipient of every notification. `python routing.py` warns if
+# The sponsor's choice of main point of contact. Every dead end gives their details first, then
+# offers to have them reach out (the follow-up form) as the second option. They are also the
+# default recipient of every notification. `python routing.py` warns if
 # these no longer match that person's entry in the scraped staff directory.
 FALLBACK_NAME = os.environ.get("FALLBACK_NAME", "Ed Collari")
 FALLBACK_TITLE = os.environ.get("FALLBACK_TITLE", "Executive Director of Development")
 FALLBACK_EMAIL = os.environ.get("FALLBACK_EMAIL", "elc0042@auburn.edu")
 FALLBACK_PHONE = os.environ.get("FALLBACK_PHONE", "334.844.1488")
 FALLBACK_CONTACT = f"{FALLBACK_NAME}, {FALLBACK_TITLE}, at {FALLBACK_EMAIL} or {FALLBACK_PHONE}"
+# Second option, after the contact details: the widget shows the card's button right below.
+FALLBACK_INVITE = (f"If you'd rather have {FALLBACK_NAME.split()[0]} reach out to you, use the "
+                   "button below to leave your details.")
 FALLBACK_REPLY = (
     "I don't have approved information to answer that. For help, please contact "
-    f"{FALLBACK_CONTACT}."
+    f"{FALLBACK_CONTACT}. {FALLBACK_INVITE}"
 )
 
 # Staff notifications (see notify.py): none | email | webhook. Advancement chose email; it stays
