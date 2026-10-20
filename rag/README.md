@@ -22,8 +22,8 @@ python run_test_prompts.py       # runs the doc's "Suggested Initial Test Prompt
 python content.py                # print every chunk exactly as it will be embedded (reads ../content/)
 python eval_models.py qwen3.5:9b gemma4:12b   # scored comparison of chat models (56 cases)
 python routing.py                # print the staff routing table built from the directory
-python test_contact.py           # checks the follow-up form endpoint (10 checks)
-python test_notify.py            # checks staff notifications with fake SMTP/webhook (10 checks)
+python test_contact.py           # checks the follow-up form, spam protection and /unanswered (18 checks)
+python test_notify.py            # checks notifications and unanswered emails with fake SMTP/webhook (13 checks)
 ```
 
 `POST /reload-rules` picks up edits to the doc's Response Rules without restarting the server
@@ -39,8 +39,13 @@ python test_notify.py            # checks staff notifications with fake SMTP/web
 | Department campaign pages (`scraped_pages/give_auburn_edu_campaigns_*.txt`) | 10 | Only the department-specific paragraphs; shared boilerplate dropped. The department's advancement liaison (parsed from the directory) is appended. |
 
 The doc's **Recommended Response Rules** become the core of the system prompt. `rag.py` adds
-fixed instructions for grounding, the tax/legal refusal, prompt-injection handling, and the fallback contact
-(augiving@auburn.edu / 334-844-1427).
+fixed instructions for grounding, the tax/legal refusal, prompt-injection handling, and the fallback contact.
+
+**Main contact.** Advancement chose Ed Collari (Executive Director of Development) as the main point of
+contact instead of the general giving office. Every reply the assistant can't answer names him, and he
+receives every notification. His details are `FALLBACK_*` in `config.py`; `python routing.py` warns if
+they stop matching his staff directory entry. Answers taken from the content doc still give whatever
+contact the doc lists (for example the giving office for bank drafts).
 
 ## Guardrails outside the prompt
 
@@ -74,11 +79,12 @@ A visitor can leave their details for a staff member to follow up:
 - **When the form appears:** from the button on a contact card, or when the visitor asks to be
   contacted ("can someone call me?"). That request gets a fixed reply with `offer_contact: true`
   and no model call.
-- **When the assistant can't answer:** if a question matches giving content but the model declines
-  because the content doesn't answer it, `/chat` returns `offer_followup: true` and the widget shows
-  a "Have a staff member follow up with me" button that opens the form. A second, short model call
-  (only on declines) decides whether the question is about giving to Engineering at all, so
-  off-topic questions, private-data requests and injection attempts get no offer. Retrieval
+- **When the assistant can't answer:** whether the model declines or no content is close enough to
+  ask it, a giving question gets `offer_followup: true` and Ed Collari's contact card: his details,
+  then an "Ask Ed to contact me" button that opens the form. A second, short model call (only on
+  dead ends) decides whether the question is about giving to Engineering at all, so off-topic
+  questions, private-data requests and injection attempts get his contact in the text but no card
+  or form. Retrieval
   distance couldn't make that call: "Can I donate to Auburn football?" is closer to the giving
   content than most real giving questions. `eval_models.py` checks the offer on every decline case.
 - **What is collected:** first name, last name, email, optional phone, optional message, and the
@@ -88,7 +94,30 @@ A visitor can leave their details for a staff member to follow up:
   with `CONTACT_REQUESTS_FILE`). The conversation, IP address, and browser details are not stored.
   All writes go through `leads.save_request()`, the one place to change when Advancement decides
   where requests should live.
-- **Not built yet:** spam protection (rate limiting or a CAPTCHA) before this is public.
+- **Spam protection:**
+  - A hidden "Website" field that people never see. Bots fill in every field.
+  - The form reports how long it was open. A submission faster than `FORM_MIN_SECONDS` (3 s), or
+    with no timer at all (posted straight to the API), is treated as a bot.
+  - Bots get the same `{"ok": true}` as a person, so they can't tell they were caught, and nothing
+    is stored or sent.
+  - Each address gets `RATE_LIMIT` (5) requests per `RATE_WINDOW_SECONDS` (10 min) to `/contact`
+    and to `/unanswered`, then `429`. Addresses are held in memory only for that window, never
+    written. Behind the web team's proxy, set `TRUST_FORWARDED_FOR=1` so the limit applies per
+    visitor instead of to the proxy.
+  - A CAPTCHA can be added if spam gets past these.
+
+## Unanswered-question emails
+
+Advancement wanted to see which donor questions the assistant can't answer, without the project
+storing conversations. When a giving question hits a dead end (the same ones that get the follow-up
+offer), `/chat` returns it in `unanswered` with an HMAC signature. The widget keeps those in page
+memory and posts them to `POST /unanswered` once the visitor is done: on closing or clearing the
+chat, leaving the page, or after 10 minutes without a new one. The server checks each signature,
+so only questions the assistant really failed on are sent, then emails them to `NOTIFY_TO` (Ed).
+Nothing is stored, and the email has only the question text: no name, address or other turns.
+
+A weekly digest would mean keeping question text on the server until it is sent. Say so if
+Advancement prefers that; it's a small change in `notify.py`.
 
 ## Staff notifications (Story 10)
 
@@ -98,11 +127,11 @@ already in the file). The channel depends on hosting, so it is set by env var:
 
 | `NOTIFY_CHANNEL` | What happens | Settings |
 |---|---|---|
-| `none` (default) | Nothing is sent; requests are only stored. | |
-| `email` | Email to `NOTIFY_TO` with the visitor's name, email, phone, message and routed staff member. Reply-To is the visitor. | `NOTIFY_TO` (comma-separated), `NOTIFY_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_STARTTLS=1`, `SMTP_USER`, `SMTP_PASSWORD` |
+| `none` (default) | Nothing is sent; requests are only stored. Stays the default until hosting is decided, so local testing never emails anyone. | |
+| `email` (Advancement's choice) | Email to `NOTIFY_TO` (default: Ed Collari) with the visitor's name, email, phone, message and routed staff member. Reply-To is the visitor. | `NOTIFY_TO` (comma-separated), `NOTIFY_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_STARTTLS=1`, `SMTP_USER`, `SMTP_PASSWORD` |
 | `webhook` | POST `{"title", "text", "request"}` to a Teams, Slack or Power Automate webhook. | `NOTIFY_WEBHOOK_URL` |
 
-Who gets notified is a sponsor decision (Story 13). By default only `NOTIFY_TO` does;
+Advancement decided Ed gets every alert. By default only `NOTIFY_TO` does;
 `NOTIFY_ROUTED_STAFF=1` also emails the staff member the visitor asked for, using the address from
 the scraped directory. The chat conversation is never included.
 

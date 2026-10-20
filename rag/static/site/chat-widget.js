@@ -13,7 +13,13 @@
  * uses them for that answer and does not store them.
  *
  * The widget labels itself as AI in the header, greeting and reply labels. When the assistant can't
- * answer a giving question it offers the follow-up form instead of a dead end.
+ * answer a giving question it shows Ed Collari's contact card and offers the follow-up form
+ * instead of a dead end.
+ *
+ * Those unanswered questions (only the question text, already signed by /chat) are kept in page
+ * memory and sent to /unanswered once the visitor is done: when they close or clear the chat,
+ * leave the page, or go 10 minutes without asking anything. The server emails them to Advancement
+ * and stores nothing.
  *
  * The one thing a visitor can choose to send for storage is the follow-up form (name, email,
  * optional phone and message), posted to /contact only when they tick the consent box and submit.
@@ -24,7 +30,10 @@
   const ENDPOINT = (script && script.dataset.endpoint) ||
     new URL('/chat', script ? script.src : location.href).href;
   const CONTACT_ENDPOINT = (script && script.dataset.contactEndpoint) || new URL('contact', ENDPOINT).href;
-  const FALLBACK_REPLY = "I'm having trouble reaching the assistant right now. For help, please contact the Auburn Engineering giving office at augiving@auburn.edu or 334-844-1427.";
+  const UNANSWERED_ENDPOINT = (script && script.dataset.unansweredEndpoint) || new URL('unanswered', ENDPOINT).href;
+  const MAIN_CONTACT = 'Ed Collari, Executive Director of Development, at elc0042@auburn.edu or 334.844.1488';
+  const FALLBACK_REPLY = "I'm having trouble reaching the assistant right now. For help, please contact " + MAIN_CONTACT + '.';
+  const IDLE_REPORT_MS = 10 * 60 * 1000; // send unanswered questions after this long without a new one
   const TEASER_KEY = 'aug-chat-teaser-dismissed'; // the only thing stored: a yes/no UI flag
   const HISTORY_SENT = 6; // most recent messages sent with each request
 
@@ -111,6 +120,7 @@
   #aug-chat .lead .actions button:disabled{opacity:.5;cursor:default;}
   #aug-chat .lead .actions .cancel{background:transparent;border:1px solid #2e4c71;color:#cbd6e6;font-weight:400;}
   #aug-chat .lead .error{color:#ffb48a;font-size:12.5px;}
+  #aug-chat .lead .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
   #aug-chat .input-row{border-top:1px solid rgba(255,255,255,.08);padding:12px 14px;}
   #aug-chat .field{display:flex;align-items:center;background:#0c1f3c;border-radius:10px;padding:6px 8px 6px 14px;gap:8px;}
   #aug-chat .field input{flex:1;background:none;border:none;outline:none;color:#fff;font:inherit;font-size:15px;padding:8px 0;min-width:0;}
@@ -171,7 +181,7 @@
   const messages = $('.messages'), input = $('.field input'), sendBtn = $('.send');
 
   // ---- State: conversation in memory only ----
-  const state = { history: [] };
+  const state = { history: [], unanswered: [] };
   function teaserDismissed() {
     try { return sessionStorage.getItem(TEASER_KEY) === '1'; } catch (e) { return false; }
   }
@@ -223,7 +233,7 @@
     wrap.append(meta);
     (entry.contacts || []).forEach((c) => wrap.append(contactCard(c, wrap)));
     if (entry.offerContact) wrap.append(leadForm(''));
-    else if (entry.offerFollowup) wrap.append(followupOffer(wrap));
+    else if (entry.offerFollowup && !(entry.contacts || []).length) wrap.append(followupOffer(wrap));
     if (withQuick) {
       const q = document.createElement('div');
       q.className = 'quick';
@@ -304,6 +314,14 @@
     const box = document.createElement('input');
     box.type = 'checkbox'; box.name = 'consent'; box.required = true;
     consent.append(box, 'I agree that Auburn Engineering Advancement may store these details and contact me.');
+    // Spam traps: a field hidden from people (bots fill in every field), and the time the form was open.
+    const trap = el('div', 'hp');
+    trap.setAttribute('aria-hidden', 'true');
+    const trapLabel = field('Website', 'text', 'website', false, 200);
+    trapLabel.querySelector('input').tabIndex = -1;
+    trapLabel.querySelector('input').autocomplete = 'off';
+    trap.append(trapLabel);
+    const opened = Date.now();
     const error = el('div', 'error');
     error.setAttribute('role', 'alert');
     const actions = el('div', 'actions');
@@ -319,7 +337,7 @@
       field('Email', 'email', 'email', true, 254),
       field('Phone (optional)', 'tel', 'phone', false, 30),
       field('What would you like to discuss? (optional)', 'textarea', 'message', false, 1000),
-      consent, error, actions);
+      consent, trap, error, actions);
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -329,7 +347,7 @@
         return;
       }
       const data = Object.fromEntries(new FormData(form));
-      data.consent = true; data.staff = staff;
+      data.consent = true; data.staff = staff; data.seconds_open = (Date.now() - opened) / 1000;
       submit.disabled = true; error.textContent = '';
       try {
         const res = await fetch(CONTACT_ENDPOINT, {
@@ -338,6 +356,11 @@
           cache: 'no-store',
           body: JSON.stringify(data),
         });
+        if (res.status === 429) {
+          submit.disabled = false;
+          error.textContent = 'Too many requests from this connection. Please try again later, or contact ' + MAIN_CONTACT + '.';
+          return;
+        }
         if (!res.ok) throw new Error('Backend returned ' + res.status);
         // Replace the form so the details don't stay on screen or in page memory.
         form.replaceWith(el('div', 'card', 'Thank you, ' + data.first_name + '. Your request for ' +
@@ -345,7 +368,7 @@
       } catch (err) {
         console.error('Follow-up request failed:', err);
         submit.disabled = false;
-        error.textContent = 'That did not go through. Please try again, or contact augiving@auburn.edu or 334-844-1427.';
+        error.textContent = 'That did not go through. Please try again, or contact ' + MAIN_CONTACT + '.';
       }
     });
     return form;
@@ -370,12 +393,27 @@
       const data = await res.json();
       return { from: 'bot', text: (data.answer || '').trim() || FALLBACK_REPLY, sources: data.sources || [],
         contacts: data.contacts || [], offerContact: !!data.offer_contact,
-        offerFollowup: !!data.offer_followup };
+        offerFollowup: !!data.offer_followup, unanswered: data.unanswered || null };
     } catch (err) {
       console.error('Giving assistant request failed:', err);
       return { from: 'bot', text: FALLBACK_REPLY, sources: [], failed: true };
     }
   }
+
+  // ---- Unanswered questions: sent once the visitor is done, then forgotten ----
+  let idleTimer = null;
+  function reportUnanswered() {
+    clearTimeout(idleTimer);
+    if (!state.unanswered.length) return;
+    // text/plain keeps sendBeacon free of a CORS preflight when the widget is on another origin.
+    const body = new Blob([JSON.stringify({ questions: state.unanswered.slice(-20) })], { type: 'text/plain' });
+    state.unanswered = [];
+    if (!navigator.sendBeacon || !navigator.sendBeacon(UNANSWERED_ENDPOINT, body)) {
+      fetch(UNANSWERED_ENDPOINT, { method: 'POST', body, keepalive: true }).catch(() => {});
+    }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') reportUnanswered(); });
+  window.addEventListener('pagehide', reportUnanswered);
 
   let busy = false;
   async function ask(text) {
@@ -394,6 +432,12 @@
     typing.classList.add('typing');
     const reply = await fetchReply(text, history);
     typing.remove();
+    if (reply.unanswered) {
+      state.unanswered.push(reply.unanswered);
+      delete reply.unanswered;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(reportUnanswered, IDLE_REPORT_MS);
+    }
     state.history.push(reply);
     render(reply);
     busy = false; sendBtn.disabled = false;
@@ -409,6 +453,7 @@
     setTimeout(() => input.focus(), 200);
   }
   function closeChat() {
+    reportUnanswered();
     panel.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
   }
@@ -425,7 +470,7 @@
 
   sendBtn.addEventListener('click', () => { const v = input.value; input.value = ''; ask(v); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = input.value; input.value = ''; ask(v); } });
-  $('.reset').addEventListener('click', () => { state.history = []; renderAll(); });
+  $('.reset').addEventListener('click', () => { reportUnanswered(); state.history = []; renderAll(); });
 
   // ---- Drag-to-resize (panel is anchored bottom-right, so the grip is top-left) ----
   const MIN_W = 300, MIN_H = 340;

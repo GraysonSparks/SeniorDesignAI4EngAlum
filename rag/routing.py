@@ -12,6 +12,7 @@ routes whose phrase no longer matches anyone.
 
 import re
 
+import config
 from content import DEPARTMENT_KEYWORDS, STAFF_DIRECTORY_URL, _contact, _liaisons, _staff_records
 
 # Only route when the visitor is asking for a person, not for general information.
@@ -133,3 +134,10 @@ if __name__ == "__main__":
         print(f"NO MATCH in the staff directory for: {topic}")
     missing = [kw for kw in DEPARTMENT_KEYWORDS if kw not in _liaisons()]
     print(f"\n{len(routes)} routes. Departments with no listed liaison: {', '.join(missing) or 'none'}")
+    # The main contact is set in config.py, not read from the directory; flag it going stale.
+    main = next((p for p in _staff_records() if p["name"] == config.FALLBACK_NAME), None)
+    if not main:
+        print(f"WARNING: main contact {config.FALLBACK_NAME} is no longer in the staff directory")
+    elif (main["email"], main["phone"]) != (config.FALLBACK_EMAIL, config.FALLBACK_PHONE):
+        print(f"WARNING: main contact details in config.py ({config.FALLBACK_EMAIL}, "
+              f"{config.FALLBACK_PHONE}) differ from the directory ({main['email']}, {main['phone']})")

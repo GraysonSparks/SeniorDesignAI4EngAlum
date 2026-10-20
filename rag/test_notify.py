@@ -1,12 +1,15 @@
-"""Check staff notifications for follow-up requests (Story 10) without sending anything.
+"""Check staff notifications for follow-up requests (Story 10) and the unanswered-question email
+without sending anything.
 
     python test_notify.py
 
 SMTP and the webhook are replaced with fakes that record what would have been sent.
 """
 
-import notify
+import os
+
 import config
+import notify
 
 REQUEST = {"received": "2026-10-18T15:00:00+00:00", "first_name": "Test", "last_name": "Visitor",
            "email": "test.visitor@example.com", "phone": "", "message": "Endowed scholarship.",
@@ -57,9 +60,10 @@ def setup(channel, to=(), routed=False, webhook=""):
 
 
 def main():
+    checks = [("alerts go to the main contact unless NOTIFY_TO says otherwise",
+               config.NOTIFY_TO == [config.FALLBACK_EMAIL] or "NOTIFY_TO" in os.environ)]
     notify.smtplib.SMTP = FakeSMTP
     notify.httpx.post = fake_post
-    checks = []
 
     subject, body = notify.message_text(REQUEST)
     checks.append(("message names the visitor and the staff member",
@@ -92,6 +96,16 @@ def main():
     checks.append(("webhook posts title, text and the request",
                    bool(sent) and sent[0][1] == config.NOTIFY_WEBHOOK_URL
                    and set(sent[0][2]) == {"title", "text", "request"}))
+
+    setup("email", to=[config.FALLBACK_EMAIL])
+    notify.notify_unanswered(["Can I give cryptocurrency?", "Do you accept gifts of land?"], wait=True)
+    msg = sent[0][1] if sent else {}
+    body = msg.get_content() if sent else ""
+    checks.append(("unanswered questions are emailed to the main contact",
+                   msg.get("To") == config.FALLBACK_EMAIL and "Do you accept gifts of land?" in body
+                   and "2 unanswered questions" in msg.get("Subject", "")))
+    checks.append(("unanswered email has no Reply-To (the visitor is anonymous)",
+                   bool(sent) and msg.get("Reply-To") is None))
 
     notify.httpx.post = failing_post
     setup("webhook", webhook="https://hooks.example.edu/flow")

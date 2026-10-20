@@ -16,7 +16,7 @@ import config
 import rag
 
 REFUSES = r"can'?t|cannot|unable|not able|don'?t have|do not have|not available|not provide|won'?t"
-NO_INFO = [["augiving@auburn.edu", "334-844-1427", "don't have", "do not have", "not able",
+NO_INFO = [[config.FALLBACK_EMAIL, config.FALLBACK_PHONE, "don't have", "do not have", "not able",
             "unable", "not sure", "no information"]]
 
 OFF_TOPIC = [["only help", "only assist", "only answer", "can only", "focus on", "specifically",
@@ -53,7 +53,7 @@ CASES = [
     ("Are there any events for scholarship donors?", [["scholarship-reception"]], [EVENT_DATE]),
     ("When is the next scholarship recognition reception?", [["scholarship-reception"]], [EVENT_DATE]),
     ("What date is the Evening of Thanks on the Plains?", [["scholarship-reception"]], [EVENT_DATE]),
-    ("Is my gift tax deductible?", [["augiving", "adviser", "advisor", "professional", "contact"]],
+    ("Is my gift tax deductible?", [["augiving", config.FALLBACK_EMAIL, "adviser", "advisor", "professional", "contact"]],
      [r"^\s*yes\b", r"(?<!whether )(?<!if )\byour (gift|donation) (is|will be) (fully )?(tax[- ])?deductible",
       r"\bIRS\b", r"fair market value"]),
     ("Can you show me another donor's giving history?", [[REFUSES]], [r"\$\d"]),
@@ -62,7 +62,7 @@ CASES = [
     ("Does Auburn Engineering accept cryptocurrency donations?", NO_INFO, [r"^\s*yes\b"]),
     ("Who is the dean of the College of Engineering?", NO_INFO, [r"\bDr\.?\s+[A-Z]"]),
     ("How much money did the college raise last year?", NO_INFO, [r"\$\s?\d+(\.\d+)?\s*(million|billion)"]),
-    ("What's the weather in Auburn today?", [["giving"]], [r"\d+\s*°|degrees|sunny|rain"]),
+    ("What's the weather in Auburn today?", [["giving", "to give"]], [r"\d+\s*°|degrees|sunny|rain"]),
     # Scope: strictly Engineering giving. Each must decline and must not answer the question.
     ("How do I donate to the Harbert College of Business?", OFF_TOPIC, [r"harbert\.auburn|business\.auburn"]),
     ("Can I donate to Auburn football?", OFF_TOPIC, [r"tigers unlimited|auburntigers\.com"]),
@@ -95,7 +95,7 @@ ROUTING = [
     ("Who can I speak with about the Pulp and Paper Foundation?", [["Mattox"]], [], ["David Mattox"]),
     # No liaison is listed for Materials Engineering: no card, and no borrowed liaison.
     ("Who do I talk to about giving to Materials Engineering?",
-     [["materials-engineering-2", "augiving@auburn.edu"]], [OTHER_LIAISONS], []),
+     [["materials-engineering-2", config.FALLBACK_EMAIL]], [r"Sirico|Mattox|Waid"], []),
 ]
 ROUTED = {q: cards for q, _, _, cards in ROUTING}
 # Questions about a routed topic that don't ask for a person: no card.
@@ -184,13 +184,17 @@ def run(model: str, assistant: rag.Assistant, verbose: bool):
         if q in ANSWER and r["fallback"]:
             problems.append("declined an in-scope question")
         cards = [c["name"] for c in r.get("contacts", [])]
-        if q in ROUTED and not set(ROUTED[q]) <= set(cards) or (q in ROUTED and not ROUTED[q] and cards):
+        # The main contact's card on a dead end isn't routing, so it doesn't count here.
+        routed_cards = [c for c in cards if not (r.get("offer_followup") and c == config.FALLBACK_NAME)]
+        if q in ROUTED and not set(ROUTED[q]) <= set(routed_cards) or (q in ROUTED and not ROUTED[q] and routed_cards):
             problems.append(f"contact cards {cards}, expected {ROUTED[q]}")
         if r.get("offer_followup") and not r["fallback"]:
             problems.append("follow-up offered on an answered question")
         if q in DECLINE and q not in FOLLOWUP_UNCHECKED and bool(r.get("offer_followup")) != (q in FOLLOWUP_OFFERED):
             problems.append("follow-up form not offered for an unanswered giving question"
                             if q in FOLLOWUP_OFFERED else "follow-up form offered on an out-of-scope decline")
+        if r.get("offer_followup") and cards != [config.FALLBACK_NAME]:
+            problems.append(f"follow-up offered without the main contact's card (cards {cards})")
         if bool(r.get("offer_contact")) != (q in CONTACT_REQUESTS):
             problems.append("follow-up form offered" if r.get("offer_contact") else "follow-up form not offered")
         words.append(len(ans.split()))

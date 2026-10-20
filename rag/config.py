@@ -34,9 +34,23 @@ MAX_DISTANCE = float(os.environ.get("MAX_DISTANCE", "0.5"))
 CONTACT_REQUESTS_FILE = Path(os.environ.get("CONTACT_REQUESTS_FILE",
                                             RAG_DIR / "data" / "contact_requests.jsonl"))
 
-# Staff notification for new follow-up requests (Story 10, see notify.py): none | email | webhook.
+# The sponsor's choice of main point of contact: named in every dead-end reply, offered as the
+# follow-up card, and the default recipient of every notification. `python routing.py` warns if
+# these no longer match that person's entry in the scraped staff directory.
+FALLBACK_NAME = os.environ.get("FALLBACK_NAME", "Ed Collari")
+FALLBACK_TITLE = os.environ.get("FALLBACK_TITLE", "Executive Director of Development")
+FALLBACK_EMAIL = os.environ.get("FALLBACK_EMAIL", "elc0042@auburn.edu")
+FALLBACK_PHONE = os.environ.get("FALLBACK_PHONE", "334.844.1488")
+FALLBACK_CONTACT = f"{FALLBACK_NAME}, {FALLBACK_TITLE}, at {FALLBACK_EMAIL} or {FALLBACK_PHONE}"
+FALLBACK_REPLY = (
+    "I don't have approved information to answer that. For help, please contact "
+    f"{FALLBACK_CONTACT}."
+)
+
+# Staff notifications (see notify.py): none | email | webhook. Advancement chose email; it stays
+# "none" until the assistant is hosted so local testing never emails anyone.
 NOTIFY_CHANNEL = os.environ.get("NOTIFY_CHANNEL", "none").lower()
-NOTIFY_TO = [a.strip() for a in os.environ.get("NOTIFY_TO", "").split(",") if a.strip()]
+NOTIFY_TO = [a.strip() for a in os.environ.get("NOTIFY_TO", FALLBACK_EMAIL).split(",") if a.strip()]
 NOTIFY_FROM = os.environ.get("NOTIFY_FROM", "giving-assistant@eng.auburn.edu")
 NOTIFY_ROUTED_STAFF = os.environ.get("NOTIFY_ROUTED_STAFF", "0") == "1"
 NOTIFY_WEBHOOK_URL = os.environ.get("NOTIFY_WEBHOOK_URL", "")
@@ -46,10 +60,16 @@ SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "0") == "1"
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 
-FALLBACK_EMAIL = "augiving@auburn.edu"
-FALLBACK_PHONE = "334-844-1427"
-FALLBACK_CONTACT = f"the Auburn Engineering giving office at {FALLBACK_EMAIL} or {FALLBACK_PHONE}"
-FALLBACK_REPLY = (
-    "I don't have approved information to answer that. For help, please contact "
-    f"{FALLBACK_CONTACT}."
-)
+# Spam protection for the follow-up form and the unanswered-question report (see app.py).
+# Counts are kept in memory per client address for the window and never written anywhere.
+RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "5"))
+RATE_WINDOW_SECONDS = int(os.environ.get("RATE_WINDOW_SECONDS", "600"))
+# Behind the web team's proxy every request comes from the proxy's address, so the limit must use
+# the visitor's address from X-Forwarded-For instead. Only turn this on behind a proxy that sets it.
+TRUST_FORWARDED_FOR = os.environ.get("TRUST_FORWARDED_FOR", "0") == "1"
+# A form submitted faster than this after it opened is treated as a bot and quietly dropped.
+FORM_MIN_SECONDS = float(os.environ.get("FORM_MIN_SECONDS", "3"))
+# Signs the unanswered questions /chat hands the widget, so /unanswered only emails questions the
+# assistant really failed on. A new random key per start is fine: a chat that spans a restart just
+# loses its pending report.
+UNANSWERED_SECRET = os.environ.get("UNANSWERED_SECRET", "").encode() or os.urandom(32)
