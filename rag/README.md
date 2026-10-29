@@ -5,6 +5,8 @@ Local RAG chat assistant for eng.auburn.edu/giving: Ollama `qwen3.5:9b` for answ
 
 ## Setup (once)
 
+On the Windows laptop, use the scripts in `../windows/` instead (see its README).
+
 ```bash
 ollama pull qwen3.5:9b
 ollama pull nomic-embed-text
@@ -29,13 +31,13 @@ python test_notify.py            # checks notifications and unanswered emails wi
 `POST /reload-rules` picks up edits to the doc's Response Rules without restarting the server
 (chunk edits need `python ingest.py` + a restart).
 
-## What gets indexed (55 chunks)
+## What gets indexed (56 chunks)
 
 | Source | Chunks | Notes |
 |---|---|---|
 | `AI4EngAlum Giving Content for RAG` (.odt or .docx, whichever was saved last) | 16 | One per `GIVING-XXX-01` section. Question + answer embedded; `Source:` URLs stored as metadata. |
 | Same doc, "Example Questions and Grounded Answers" | 15 | One per numbered Q&A. Examples that only describe bot behavior ("The chatbot should...") are skipped; the response rules cover them. An example without its own URL takes the source of the curated chunk it overlaps with most (run `python content.py` to see the matches). |
-| Staff directory (`scraped_pages/eng_auburn_edu_admin_development_index_html.txt`) | 14 | One per person, role description first. |
+| Staff directory (`scraped_pages/eng_auburn_edu_admin_development_index_html.txt`) | 15 | One per person, role description first. |
 | Department campaign pages (`scraped_pages/give_auburn_edu_campaigns_*.txt`) | 10 | Only the department-specific paragraphs; shared boilerplate dropped. The department's advancement liaison (parsed from the directory) is appended. |
 
 The doc's **Recommended Response Rules** become the core of the system prompt. `rag.py` adds
