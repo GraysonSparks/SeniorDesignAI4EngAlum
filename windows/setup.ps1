@@ -1,5 +1,5 @@
 # One-time install for the Windows laptop. Safe to run again: each step skips what is already done.
-#   Setup.bat            install everything, then run all checks (including the 56-case eval)
+#   Setup.bat            install everything, then run all checks (including the 60-case eval)
 #   Setup.bat -SkipEval  same, without the eval (it takes a few minutes)
 
 param([switch]$SkipEval)

@@ -22,7 +22,7 @@ python ingest.py                 # rebuild the index; re-run after editing the d
 uvicorn app:app --port 8000      # test site + chat at http://localhost:8000/
 python run_test_prompts.py       # runs the doc's "Suggested Initial Test Prompts"
 python content.py                # print every chunk exactly as it will be embedded (reads ../content/)
-python eval_models.py qwen3.5:9b gemma4:12b   # scored comparison of chat models (56 cases)
+python eval_models.py qwen3.5:9b gemma4:12b   # scored comparison of chat models (60 cases)
 python routing.py                # print the staff routing table built from the directory
 python test_contact.py           # checks the follow-up form, spam protection and /unanswered (18 checks)
 python test_notify.py            # checks notifications and unanswered emails with fake SMTP/webhook (13 checks)
