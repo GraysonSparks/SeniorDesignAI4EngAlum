@@ -152,6 +152,25 @@ def dated_details_pointer(relevant: list[dict]) -> tuple[str, str] | None:
     return None
 
 
+PHONE = re.compile(r"\b\d{3}[.\-) ]\s?\d{3}[.\- ]\d{4}\b")
+PHONE_ASK = re.compile(r"\b(phone|number|call)\b", re.I)
+
+
+def phone_pointer(relevant: list[dict]) -> tuple[str, str] | None:
+    """The sentence with a phone number from the closest non-routing content, as a reply."""
+    for h in relevant:
+        if h["distance"] > POINTER_DISTANCE + 0.1 or not h["sources"] or h["id"].startswith("ROUTE-"):
+            continue
+        sentences = re.split(r"(?<=[.!?])\s+", h["text"])
+        hit = next((x for x in sentences if PHONE.search(x)), None)
+        if hit:
+            hit = re.sub(r"\b(?:the )?visitors? should\b", "please", hit).rstrip(".")
+            url = h["sources"][0]
+            return (f"{hit[0].upper()}{hit[1:]}. Details are on {url}.", url)
+        return None
+    return None
+
+
 class Assistant:
     def __init__(self):
         self.collection = get_collection()
@@ -247,6 +266,10 @@ class Assistant:
         except (ValueError, KeyError, TypeError):
             raw, declined = content.strip(), False
         pointer = dated_details_pointer(relevant) if declined else None
+        if history and not pointer and PHONE_ASK.search(search_query) and not PHONE.search(raw if not declined else ""):
+            # A follow-up asking for "the number" again: if the closest content has one, the code
+            # repeats it rather than relying on the model to.
+            pointer = phone_pointer(relevant)
         if pointer:
             # The content says these details change and names the page that has them, so the
             # visitor gets that page instead of a decline (the prompt asks for this too, but the
