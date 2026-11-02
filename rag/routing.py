@@ -85,16 +85,46 @@ def build_routes() -> tuple[list[dict], list[str]]:
     return routes, unmatched
 
 
+# "Who can I contact?" with no department, program or region: the sponsor asked (10/20) to be the
+# main point of contact rather than the general giving office. Only whole questions match, so
+# "Who should I contact about donating stock?" still gets that topic's own contact.
+GENERAL_CONTACT = re.compile(
+    r"^\s*(?:(?:who|whom)\s+(?:can|should|do|could|would)\s+i\s+"
+    r"(?:contact|talk\s+to|talk\s+with|speak\s+to|speak\s+with|reach|reach\s+out\s+to|call|email|meet\s+with)"
+    r"(?:\s+(?:about|for|regarding|to\s+discuss)\s+(?:a\s+|my\s+|making\s+a\s+)?"
+    r"(?:gift|giving|donation|donating|giving\s+to\s+(?:auburn\s+)?engineering))?"
+    r"|who\s+(?:is|should\s+be)\s+(?:my|the|your)\s+(?:main\s+)?(?:point\s+of\s+contact|contact(?:\s+person)?)"
+    r"|who\s+should\s+my\s+(?:main\s+)?(?:point\s+of\s+contact|contact(?:\s+person)?)\s+be"
+    r"|who\s+can\s+help\s+me(?:\s+(?:with|make)\s+(?:a\s+|my\s+)?(?:gift|donation))?)"
+    r"\s*[?.!]*\s*$", re.I)
+
+
+GENERAL_TOPIC = "giving to Auburn Engineering"
+
+
+def main_contact() -> dict:
+    """The main contact's directory entry (config.FALLBACK_*), or those settings if not listed."""
+    for p in _staff_records():
+        if (p["email"] or "").lower() == config.FALLBACK_EMAIL.lower():
+            return p
+    return {"name": config.FALLBACK_NAME, "title": config.FALLBACK_TITLE,
+            "email": config.FALLBACK_EMAIL, "phone": config.FALLBACK_PHONE, "details": ""}
+
+
 class Router:
     def __init__(self):
         self.routes, self.unmatched = build_routes()
+        self.main = main_contact()
 
     def route(self, question: str) -> list[dict]:
         """Matches for a question that asks for a person: [{"topic", "people"}], else []."""
         if not CONTACT_INTENT.search(question):
             return []
-        return [{"topic": r["topic"], "people": r["people"]}
-                for r in self.routes if r["pattern"].search(question)]
+        matches = [{"topic": r["topic"], "people": r["people"]}
+                   for r in self.routes if r["pattern"].search(question)]
+        if not matches and GENERAL_CONTACT.search(question):
+            matches = [{"topic": GENERAL_TOPIC, "people": [self.main]}]
+        return matches
 
 
 def as_hit(match: dict, distance: float) -> dict:

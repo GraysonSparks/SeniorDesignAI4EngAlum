@@ -50,6 +50,10 @@ CONTACT_REQUEST = re.compile(
 CONTACT_OFFER = (
     f"You can reach {config.FALLBACK_CONTACT}. If you'd rather have "
     f"{config.FALLBACK_NAME.split()[0]} reach out to you, fill in the short form below.")
+GENERAL_CONTACT_REPLY = (
+    f"If you'd like to stay in touch, leave your details in the form below, or contact "
+    f"{config.FALLBACK_CONTACT}. For other general giving questions, Auburn's giving office can help "
+    f"at {config.GIVING_OFFICE_EMAIL} or {config.GIVING_OFFICE_PHONE}.")
 # Every dead end shows the main contact's card: their details, then an "Ask <name> to contact me"
 # button that opens the follow-up form.
 MAIN_CONTACT_CARD = {"name": config.FALLBACK_NAME, "title": config.FALLBACK_TITLE,
@@ -237,6 +241,12 @@ class Assistant:
         # Staff who own the topic the visitor asked about go first in the context, at the best
         # retrieved distance so the staff directory is cited alongside the closest chunks.
         routed = self.router.route(search_query)
+        if [m["topic"] for m in routed] == [routing.GENERAL_TOPIC]:
+            # "Who can I contact?" with no topic: the main contact first, then the giving office for
+            # other general needs, and the follow-up form straight away. Stated by the code, no AI call.
+            return {"answer": GENERAL_CONTACT_REPLY, "sources": [routing.STAFF_DIRECTORY_URL],
+                    "chunks": [], "fallback": False, "offer_contact": True, "contacts": [],
+                    "retrieved": hits, "search_query": search_query}
         best = relevant[0]["distance"] if relevant else config.MAX_DISTANCE
         relevant = [routing.as_hit(m, best) for m in routed] + relevant
         if not relevant:

@@ -52,15 +52,18 @@ seconds, with a link to the official page it came from.
    checked at the linked source.
 
    ![An answer with its source link](images/03_answer_with_source.jpg)
-4. **Contact cards.** When a visitor asks who to talk to, the assistant shows that staff member's
+4. **Who to contact.** A general "Who can I contact?" gets Ed's title, email and phone first, then
+   Auburn's giving office (augiving@auburn.edu, 334-844-1427) for other general giving questions, and
+   the follow-up form opens right away.
+5. **Contact cards.** When a visitor asks who to talk to about a department, program or region, the assistant shows that staff member's
    card: name, title, email, phone, and a button such as **Ask Jon to contact me**.
 
    ![A staff contact card](images/04_contact_card.jpg)
-5. **When it can't answer.** The reply gives Ed's details first, then shows his card with
+6. **When it can't answer.** The reply gives Ed's details first, then shows his card with
    **Ask Ed to contact me**.
 
    ![A declined question with Ed's details and card](images/06_decline_ed_card.jpg)
-6. **The follow-up form.** Opened from any contact card, or shown right away when a visitor asks to be
+7. **The follow-up form.** Opened from any contact card, or shown right away when a visitor asks to be
    contacted ("can someone call me?"). It asks for first and last name and email (required), phone and
    a message (optional), and a consent box: *"I agree that Auburn Engineering Advancement may store
    these details and contact me."* Nothing is sent until the box is ticked. Afterwards the visitor sees
@@ -69,11 +72,11 @@ seconds, with a link to the official page it came from.
    ![The follow-up form](images/07_follow_up_form.jpg)
 
    ![The confirmation after sending](images/08_form_received.jpg)
-7. **Follow-up questions work.** A visitor can ask "Who handles Aerospace?" and then "What about
+8. **Follow-up questions work.** A visitor can ask "Who handles Aerospace?" and then "What about
    Mechanical?" The assistant uses the last few messages to understand the follow-up.
 
    ![A follow-up question showing the Mechanical Engineering contact](images/05_follow_up_card.jpg)
-8. **Clearing.** The **Clear** button erases the conversation. Reloading or leaving the page also
+9. **Clearing.** The **Clear** button erases the conversation. Reloading or leaving the page also
    erases it.
 
 ---

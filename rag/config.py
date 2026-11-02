@@ -43,6 +43,10 @@ FALLBACK_TITLE = os.environ.get("FALLBACK_TITLE", "Executive Director of Develop
 FALLBACK_EMAIL = os.environ.get("FALLBACK_EMAIL", "elc0042@auburn.edu")
 FALLBACK_PHONE = os.environ.get("FALLBACK_PHONE", "334.844.1488")
 FALLBACK_CONTACT = f"{FALLBACK_NAME}, {FALLBACK_TITLE}, at {FALLBACK_EMAIL} or {FALLBACK_PHONE}"
+# Auburn's central giving office (give.auburn.edu: "For additional giving options or if you have
+# questions..."), named after the main contact when a visitor asks who to contact in general.
+GIVING_OFFICE_EMAIL = os.environ.get("GIVING_OFFICE_EMAIL", "augiving@auburn.edu")
+GIVING_OFFICE_PHONE = os.environ.get("GIVING_OFFICE_PHONE", "334-844-1427")
 # Second option, after the contact details: the widget shows the card's button right below.
 FALLBACK_INVITE = (f"If you'd rather have {FALLBACK_NAME.split()[0]} reach out to you, use the "
                    "button below to leave your details.")
