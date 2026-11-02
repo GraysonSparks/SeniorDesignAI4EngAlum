@@ -14,7 +14,7 @@ $OllamaVersion = "0.40.6"
 # 127.0.0.1, not localhost: Ollama listens on IPv4 only, and Windows tries ::1 first.
 $OllamaUrl = "http://127.0.0.1:11434"
 $AppPort = 8000
-$AppUrl = "http://localhost:$AppPort/"
+$AppUrl = "http://127.0.0.1:$AppPort/"   # 127.0.0.1 for the same reason as Ollama
 
 # Model tags and the exact digests the desktop uses. A different digest means the tag was updated upstream.
 $Models = [ordered]@{
