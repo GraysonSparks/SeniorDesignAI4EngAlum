@@ -98,9 +98,9 @@ ROUTING = [
     ("Who can I speak with about the Pulp and Paper Foundation?", [["Mattox"]], [], ["David Mattox"]),
     # No topic named: the sponsor is the main point of contact (10/20), not the giving office.
     # Ed first, then the giving office for other general needs; the form opens straight away.
-    ("Who can I contact?", [["Collari"], ["augiving"], ["form below"]], [], []),
-    ("Who should my main point of contact be?", [["Collari"], ["augiving"], ["form below"]], [], []),
-    ("Who can I talk to about a gift?", [["Collari"], ["augiving"], ["form below"]], [], []),
+    ("Who can I contact?", [["Collari"], ["augiving"], ["Optionally"]], [], []),
+    ("Who should my main point of contact be?", [["Collari"], ["augiving"], ["Optionally"]], [], []),
+    ("Who can I talk to about a gift?", [["Collari"], ["augiving"], ["Optionally"]], [], []),
     # New on the directory 10/29; answered from her staff entry, no routing card.
     ("Who is the development coordinator for Engineering Advancement?", [["Avery Storm"]], [], []),
     # No liaison is listed for Materials Engineering: no card, and no borrowed liaison.

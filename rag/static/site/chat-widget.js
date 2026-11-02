@@ -74,6 +74,13 @@
   #aug-chat .status::before{content:"";width:6px;height:6px;border-radius:50%;background:#2bb673;}
   #aug-chat .close{border:none;background:none;color:#b9c4d6;font-size:22px;cursor:pointer;padding:4px;line-height:1;}
   #aug-chat .close:hover{color:#fff;}
+  #aug-chat .expand{border:none;background:none;color:#b9c4d6;cursor:pointer;padding:6px;line-height:0;}
+  #aug-chat .expand:hover{color:#fff;}
+  #aug-chat .expand svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  #aug-chat .panel.full{top:0;right:0;bottom:0;left:0;width:auto !important;height:auto !important;max-width:none;max-height:none;border-radius:0;}
+  #aug-chat .panel.full .resize{display:none;}
+  #aug-chat .panel.full .messages,#aug-chat .panel.full .input-row{width:100%;max-width:860px;margin:0 auto;box-sizing:border-box;}
+  #aug-chat .panel.full .input-row{border-top:none;}
   #aug-chat .messages{flex:1;overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:14px;}
   #aug-chat .msg{max-width:86%;font-size:15px;line-height:1.5;}
   #aug-chat .msg.bot{align-self:flex-start;}
@@ -106,6 +113,7 @@
   #aug-chat .lead{margin-top:8px;padding:13px;border:1px solid #2e4c71;border-radius:12px;background:#0c1f3c;color:#edeff3;
     font-size:13.5px;display:flex;flex-direction:column;gap:8px;}
   #aug-chat .lead .title{font-weight:700;font-size:14px;}
+  #aug-chat .lead .note{color:#9fb0c8;font-size:12.5px;line-height:1.35;margin:-4px 0 2px;}
   #aug-chat .lead label{display:flex;flex-direction:column;gap:3px;color:#b9c4d6;font-size:12.5px;}
   #aug-chat .lead input[type=text],#aug-chat .lead input[type=email],#aug-chat .lead input[type=tel],#aug-chat .lead textarea{
     background:#071830;border:1px solid #2e4c71;border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:7px 9px;width:100%;}
@@ -136,6 +144,7 @@
     #aug-chat .panel{right:0;bottom:0;left:0;width:100%;max-width:100%;height:100%;max-height:100%;border-radius:0;}
     #aug-chat .launcher{right:16px;bottom:16px;}
     #aug-chat .resize{display:none;}
+    #aug-chat .expand{display:none;}
     #aug-chat .teaser{max-width:200px;}
   }
   @media (prefers-reduced-motion:reduce){#aug-chat .teaser,#aug-chat .panel,#aug-chat .toggle{transition:none;}}`;
@@ -163,6 +172,7 @@
       <div class="head">
         <div class="avatar"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${BUBBLE_ICON}</svg></div>
         <div class="head-text"><div class="name">Engineering Giving Assistant<span class="ai-tag">AI</span></div><div class="status">AI assistant · Online now</div></div>
+        <button class="expand" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
         <button class="close" aria-label="Close chat">&times;</button>
       </div>
       <div class="messages" aria-live="polite"></div>
@@ -250,6 +260,16 @@
     return wrap;
   }
 
+  // A long reply would otherwise be scrolled to its end. Show the visitor's question and the start
+  // of the reply instead; if both don't fit, the reply's first line goes to the top.
+  function revealReply(question, reply) {
+    const box = messages.getBoundingClientRect();
+    const from = question && reply.getBoundingClientRect().bottom - question.getBoundingClientRect().top <= box.height
+      ? question : reply;
+    if (from === question) { messages.scrollTop = messages.scrollHeight; return; }
+    messages.scrollTop += reply.getBoundingClientRect().top - box.top - 12;
+  }
+
   // ---- Staff contact cards and the follow-up form ----
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -332,7 +352,8 @@
     cancel.addEventListener('click', () => form.remove());
     actions.append(submit, cancel);
     form.append(
-      el('div', 'title', staff ? 'Ask ' + staff + ' to follow up' : 'Request a follow-up'),
+      el('div', 'title', (staff ? 'Ask ' + staff + ' to follow up' : 'Request a follow-up') + ' (optional)'),
+      el('div', 'note', 'Only if you want someone to contact you. You can keep chatting without filling this in.'),
       names,
       field('Email', 'email', 'email', true, 254),
       field('Phone (optional)', 'tel', 'phone', false, 30),
@@ -427,7 +448,7 @@
       .map((e) => ({ role: e.from === 'user' ? 'user' : 'assistant', content: e.text }));
     const userEntry = { from: 'user', text };
     state.history.push(userEntry);
-    render(userEntry);
+    const asked = render(userEntry);
     const typing = render({ from: 'bot', text: 'Typing…' });
     typing.classList.add('typing');
     const reply = await fetchReply(text, history);
@@ -439,7 +460,7 @@
       idleTimer = setTimeout(reportUnanswered, IDLE_REPORT_MS);
     }
     state.history.push(reply);
-    render(reply);
+    revealReply(asked, render(reply));
     busy = false; sendBtn.disabled = false;
     input.focus();
   }
@@ -452,8 +473,17 @@
     toggle.setAttribute('aria-expanded', 'true');
     setTimeout(() => input.focus(), 200);
   }
+  const expandBtn = $('.expand');
+  function setFull(on) {
+    panel.classList.toggle('full', on);
+    expandBtn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+    expandBtn.title = on ? 'Exit full screen' : 'Full screen';
+    expandBtn.querySelector('svg').innerHTML = on ? '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>' : '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>';
+  }
+  expandBtn.addEventListener('click', () => { setFull(!panel.classList.contains('full')); input.focus(); });
   function closeChat() {
     reportUnanswered();
+    setFull(false);
     panel.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
   }
@@ -466,7 +496,11 @@
     dismissTeaser();
     teaser.classList.remove('show');
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open')) closeChat(); });
+  // Escape leaves full screen first, then closes the chat.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !panel.classList.contains('open')) return;
+    if (panel.classList.contains('full')) setFull(false); else closeChat();
+  });
 
   sendBtn.addEventListener('click', () => { const v = input.value; input.value = ''; ask(v); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = input.value; input.value = ''; ask(v); } });
@@ -476,7 +510,7 @@
   const MIN_W = 300, MIN_H = 340;
   let drag = null;
   $('.resize').addEventListener('pointerdown', (e) => {
-    if (window.innerWidth <= 460) return;
+    if (window.innerWidth <= 460 || panel.classList.contains('full')) return;
     const r = panel.getBoundingClientRect();
     drag = { x: e.clientX, y: e.clientY, w: r.width, h: r.height };
     panel.classList.add('resizing');

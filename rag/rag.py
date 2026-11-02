@@ -51,9 +51,9 @@ CONTACT_OFFER = (
     f"You can reach {config.FALLBACK_CONTACT}. If you'd rather have "
     f"{config.FALLBACK_NAME.split()[0]} reach out to you, fill in the short form below.")
 GENERAL_CONTACT_REPLY = (
-    f"If you'd like to stay in touch, leave your details in the form below, or contact "
-    f"{config.FALLBACK_CONTACT}. For other general giving questions, Auburn's giving office can help "
-    f"at {config.GIVING_OFFICE_EMAIL} or {config.GIVING_OFFICE_PHONE}.")
+    f"You can contact {config.FALLBACK_CONTACT}. For other general giving questions, Auburn's giving "
+    f"office can help at {config.GIVING_OFFICE_EMAIL} or {config.GIVING_OFFICE_PHONE}. Optionally, you "
+    f"can also leave your information below and {config.FALLBACK_NAME.split()[0]} will reach out to you.")
 # Every dead end shows the main contact's card: their details, then an "Ask <name> to contact me"
 # button that opens the follow-up form.
 MAIN_CONTACT_CARD = {"name": config.FALLBACK_NAME, "title": config.FALLBACK_TITLE,
@@ -312,6 +312,12 @@ class Assistant:
                     "chunks": [], "fallback": True, "retrieved": hits,
                     "search_query": search_query, **self.dead_end_offer(search_query)}
         text = replace_unknown_urls(raw, sources + all_context_urls)
+        # Every routed staff member is named, not just shown as a card: the model sometimes names
+        # only the first of two liaisons.
+        missing = list({p["name"]: p for m in routed for p in m["people"]
+                        if p["name"].split()[-1] not in text}.values())
+        if missing:
+            text = f"{text} You can also contact {' or '.join(routing._contact(p) for p in missing)}."
         return {"answer": text, "raw_answer": raw, "context": context, "sources": sources,
                 "chunks": [h["id"] for h in relevant], "fallback": False, "retrieved": hits,
                 "contacts": routing.contact_cards(routed), "search_query": search_query}

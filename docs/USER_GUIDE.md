@@ -47,6 +47,9 @@ seconds, with a link to the official page it came from.
    gift?*, *Can I give to my department?*, *Who can I talk to about a gift?*
 
    ![The chat window with the greeting and starter questions](images/02_greeting.jpg)
+
+   The arrows button next to the **×** makes the chat full screen; press it again or **Esc** to go back.
+   A long answer opens at its first line, so visitors read it from the top.
 3. **Answers.** Each answer is two to four sentences, labeled **Giving Assistant (AI)**, with a link to
    the official page. The header and footer also say the answers are AI-generated and should be
    checked at the linked source.
