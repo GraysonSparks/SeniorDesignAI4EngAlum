@@ -56,8 +56,8 @@ seconds, with a link to the official page it came from.
 
    ![An answer with its source link](images/03_answer_with_source.jpg)
 4. **Who to contact.** A general "Who can I contact?" gets Ed's title, email and phone first, then
-   Auburn's giving office (augiving@auburn.edu, 334-844-1427) for other general giving questions, and
-   the follow-up form opens right away.
+   Auburn's giving office (augiving@auburn.edu, 334-844-1427) for other general giving questions, then
+   Ed's card with **Ask Ed to contact me**. The form opens only if the visitor clicks it.
 5. **Contact cards.** When a visitor asks who to talk to about a department, program or region, the assistant shows that staff member's
    card: name, title, email, phone, and a button such as **Ask Jon to contact me**.
 

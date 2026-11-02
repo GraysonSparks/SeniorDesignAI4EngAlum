@@ -97,10 +97,10 @@ ROUTING = [
      [r"Sirico|Mattox|Collari"], ["Casey Waid"]),
     ("Who can I speak with about the Pulp and Paper Foundation?", [["Mattox"]], [], ["David Mattox"]),
     # No topic named: the sponsor is the main point of contact (10/20), not the giving office.
-    # Ed first, then the giving office for other general needs; the form opens straight away.
-    ("Who can I contact?", [["Collari"], ["augiving"], ["Optionally"]], [], []),
-    ("Who should my main point of contact be?", [["Collari"], ["augiving"], ["Optionally"]], [], []),
-    ("Who can I talk to about a gift?", [["Collari"], ["augiving"], ["Optionally"]], [], []),
+    # Ed first, then the giving office for other general needs, and Ed's card (its button opens the form).
+    ("Who can I contact?", [["Collari"], ["augiving"], ["Optionally"]], [], ["Ed Collari"]),
+    ("Who should my main point of contact be?", [["Collari"], ["augiving"], ["Optionally"]], [], ["Ed Collari"]),
+    ("Who can I talk to about a gift?", [["Collari"], ["augiving"], ["Optionally"]], [], ["Ed Collari"]),
     # New on the directory 10/29; answered from her staff entry, no routing card.
     ("Who is the development coordinator for Engineering Advancement?", [["Avery Storm"]], [], []),
     # No liaison is listed for Materials Engineering: no card, and no borrowed liaison.
@@ -111,9 +111,6 @@ ROUTED = {q: cards for q, _, _, cards in ROUTING}
 # Questions about a routed topic that don't ask for a person: no card.
 ROUTED |= {"What is the EAGLE Society?": [], "Are there any events for scholarship donors?": []}
 ANSWER |= {q for q, *_ in ROUTING[:-1]}
-
-GENERAL_CONTACT = {"Who can I contact?", "Who should my main point of contact be?",
-                   "Who can I talk to about a gift?"}
 
 # Follow-up requests (Story 11): the fixed offer is returned and the widget shows its form.
 CONTACT_REQUESTS = [
@@ -218,7 +215,7 @@ def run(model: str, assistant: rag.Assistant, verbose: bool):
                             else "out-of-scope decline reported as unanswered")
         if r.get("offer_followup") and cards != [config.FALLBACK_NAME]:
             problems.append(f"follow-up offered without the main contact's card (cards {cards})")
-        if bool(r.get("offer_contact")) != (q in CONTACT_REQUESTS or q in GENERAL_CONTACT):
+        if bool(r.get("offer_contact")) != (q in CONTACT_REQUESTS):
             problems.append("follow-up form offered" if r.get("offer_contact") else "follow-up form not offered")
         words.append(len(ans.split()))
         if problems:

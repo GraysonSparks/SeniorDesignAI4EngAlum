@@ -53,7 +53,7 @@ CONTACT_OFFER = (
 GENERAL_CONTACT_REPLY = (
     f"You can contact {config.FALLBACK_CONTACT}. For other general giving questions, Auburn's giving "
     f"office can help at {config.GIVING_OFFICE_EMAIL} or {config.GIVING_OFFICE_PHONE}. Optionally, you "
-    f"can also leave your information below and {config.FALLBACK_NAME.split()[0]} will reach out to you.")
+    f"can also use the button below to have {config.FALLBACK_NAME.split()[0]} reach out to you.")
 # Every dead end shows the main contact's card: their details, then an "Ask <name> to contact me"
 # button that opens the follow-up form.
 MAIN_CONTACT_CARD = {"name": config.FALLBACK_NAME, "title": config.FALLBACK_TITLE,
@@ -243,9 +243,10 @@ class Assistant:
         routed = self.router.route(search_query)
         if [m["topic"] for m in routed] == [routing.GENERAL_TOPIC]:
             # "Who can I contact?" with no topic: the main contact first, then the giving office for
-            # other general needs, and the follow-up form straight away. Stated by the code, no AI call.
+            # other general needs, and the main contact's card, whose button opens the form. Stated by
+            # the code, no AI call.
             return {"answer": GENERAL_CONTACT_REPLY, "sources": [routing.STAFF_DIRECTORY_URL],
-                    "chunks": [], "fallback": False, "offer_contact": True, "contacts": [],
+                    "chunks": [], "fallback": False, "contacts": routing.contact_cards(routed),
                     "retrieved": hits, "search_query": search_query}
         best = relevant[0]["distance"] if relevant else config.MAX_DISTANCE
         relevant = [routing.as_hit(m, best) for m in routed] + relevant
