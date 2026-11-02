@@ -11,7 +11,8 @@ $Python = Join-Path $VenvDir "Scripts\python.exe"
 
 $PythonVersion = "3.12.14"
 $OllamaVersion = "0.40.6"
-$OllamaUrl = "http://localhost:11434"
+# 127.0.0.1, not localhost: Ollama listens on IPv4 only, and Windows tries ::1 first.
+$OllamaUrl = "http://127.0.0.1:11434"
 $AppPort = 8000
 $AppUrl = "http://localhost:$AppPort/"
 
@@ -25,6 +26,7 @@ $ChatModel = "qwen3.5:9b"
 # config.py reads these. The index and visitor requests stay out of Dropbox; UTF-8 matches how Linux
 # reads the content files; no __pycache__ gets written into the synced folder.
 $env:CHROMA_DIR = Join-Path $DataDir "chroma_db"
+$env:OLLAMA_URL = $OllamaUrl
 $env:CONTACT_REQUESTS_FILE = Join-Path $DataDir "data\contact_requests.jsonl"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONDONTWRITEBYTECODE = "1"
@@ -56,12 +58,17 @@ function Test-OllamaUp {
 function Start-Ollama {
     if (Test-OllamaUp) { return }
     if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) { Fail "Ollama is not installed. Run Setup.bat first." }
-    Start-Process ollama -ArgumentList "serve" -WindowStyle Hidden
-    for ($i = 0; $i -lt 30; $i++) {
+    # Its output goes to a log, so a failed start can say why.
+    New-Item -ItemType Directory -Force $DataDir | Out-Null
+    $log = Join-Path $DataDir "ollama-serve.log"
+    Start-Process ollama -ArgumentList "serve" -WindowStyle Hidden -RedirectStandardError $log -RedirectStandardOutput "$log.out"
+    # The first start after a reboot or driver update can spend a while detecting the GPU.
+    for ($i = 0; $i -lt 90; $i++) {
         if (Test-OllamaUp) { return }
         Start-Sleep -Seconds 1
     }
-    Fail "Ollama did not start within 30 seconds."
+    if (Test-Path $log) { Write-Host ""; Get-Content $log -Tail 15 | ForEach-Object { Write-Host "    $_" } }
+    Fail "Ollama did not start within 90 seconds. Its last messages are above (full log: $log)."
 }
 
 # Models Ollama currently has loaded, with how much of each is on the GPU.
