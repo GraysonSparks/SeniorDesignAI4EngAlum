@@ -94,14 +94,15 @@ try {
     & $Python ingest.py
     if ($LASTEXITCODE -ne 0) { Fail "ingest.py failed." }
 
-    # The checks print 'FAIL' for any failed case instead of setting an exit code.
+    # The checks print FAIL (capitals, at the start of a line) for a failed case; eval_models.py sets no exit code.
+    # Case-sensitive on purpose: test_notify.py has a passing check named "a failed webhook doesn't raise".
     $checks = @("test_contact.py", "test_notify.py")
     if (-not $SkipEval) { $checks += "eval_models.py" }
     $failed = @()
     foreach ($script in $checks) {
         Write-Step "Running $script"
         & $Python $script | Tee-Object -Variable out
-        if ($LASTEXITCODE -ne 0 -or ($out -match "FAIL")) { $failed += $script }
+        if ($LASTEXITCODE -ne 0 -or ($out -cmatch "^\s*FAIL")) { $failed += $script }
     }
 } finally {
     Pop-Location
