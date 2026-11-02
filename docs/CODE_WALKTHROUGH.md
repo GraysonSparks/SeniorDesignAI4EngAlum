@@ -116,7 +116,7 @@ The eval is also how we picked `qwen3.5:9b`: same 56 cases run against several m
 
 ## Demo script (about 5 minutes, let Ed drive after)
 
-1. Start it: `Start.bat` on the laptop (shows 100% GPU), browser opens `http://localhost:8000/`.
+1. Start it: `Start.bat` on the laptop (shows 100% GPU), browser opens `http://127.0.0.1:8000/`.
 2. Normal question: *"What is the minimum to establish an endowment?"* → $25,000, with a source link.
 3. Routing: *"Who should I talk to about supporting Aerospace Engineering?"* → Mattox's card.
 4. Follow-up memory: *"What about Mechanical?"* → Jon Sirico's card.

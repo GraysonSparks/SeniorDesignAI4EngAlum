@@ -193,7 +193,7 @@ team hosts it. The scripts are in the project's `windows` folder. Double-click t
 | Script | When to use it |
 |---|---|
 | **Setup.bat** | Once, the first time (installs everything, about 7 GB of downloads, and runs the checks). Ends with **SETUP COMPLETE** in green. |
-| **Start.bat** | Each time you want to use it. A browser opens at `http://localhost:8000/` with a copy of the giving pages and the chat box. |
+| **Start.bat** | Each time you want to use it. A browser opens at `http://127.0.0.1:8000/` with a copy of the giving pages and the chat box. |
 | **Stop.bat** | When you are done. Wait for the green **STOPPED** message. |
 | **Status.bat** | To check whether it is running, without changing anything. |
 

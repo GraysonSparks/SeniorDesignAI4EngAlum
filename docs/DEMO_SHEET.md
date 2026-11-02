@@ -7,7 +7,7 @@ Advancement sees and receives is in [`USER_GUIDE.md`](USER_GUIDE.md).
 
 - [ ] Laptop charged, charger packed. `git pull` in the project folder, then `Setup.bat` once if the
       code changed since the last setup (ends with green **SETUP COMPLETE**).
-- [ ] `Start.bat`: both models at **100% GPU**, browser opens `http://localhost:8000/`.
+- [ ] `Start.bat`: both models at **100% GPU**, browser opens `http://127.0.0.1:8000/`.
 - [ ] Ask one question to warm the model up (the first answer after loading is slower).
 - [ ] Close other GPU-heavy apps. Wi-Fi is not needed once it's running.
 
@@ -54,7 +54,7 @@ Then hand Ed the laptop and let him type his own questions. Write down anything 
 | "I'm having trouble reaching the assistant right now…" | `Stop.bat`, then `Start.bat` |
 | A model shows less than 100% GPU, answers slow | Close other apps, `Stop.bat`, `Start.bat` |
 | Port 8000 in use | `Stop.bat` |
-| Browser didn't open | Go to `http://localhost:8000/` by hand |
+| Browser didn't open | Go to `http://127.0.0.1:8000/` by hand |
 | Laptop won't cooperate at all | Show the screenshots in `USER_GUIDE.md` section 2 and walk through them |
 
 Afterwards: `Stop.bat` (green **STOPPED**), and write up Ed's answers and reactions the same day.
