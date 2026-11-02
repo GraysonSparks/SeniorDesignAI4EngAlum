@@ -58,7 +58,9 @@ if ($have -eq $OllamaVersion) {
     Get-Process -Name "ollama*" -ErrorAction SilentlyContinue | Stop-Process -Force
     $installer = Join-Path $env:TEMP "OllamaSetup-$OllamaVersion.exe"
     Invoke-WebRequest "https://github.com/ollama/ollama/releases/download/v$OllamaVersion/OllamaSetup.exe" -OutFile $installer -UseBasicParsing
-    Start-Process $installer -ArgumentList "/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES" -Wait
+    # Wait for the installer only: -Wait would also wait for the Ollama tray app it launches at the end.
+    $proc = Start-Process $installer -ArgumentList "/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES" -PassThru
+    $proc.WaitForExit()
     Remove-Item $installer -ErrorAction SilentlyContinue
     if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) { Fail "Ollama did not install." }
     Write-Ok "installed: $(& ollama --version)"
