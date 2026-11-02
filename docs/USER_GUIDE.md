@@ -254,6 +254,6 @@ server.
 **Will it give the same answer to the same question?** Yes. It is set to answer consistently, which
 makes it predictable to test.
 
-**How do we know it's accurate?** Before each delivery, the team runs 60 test questions with known
+**How do we know it's accurate?** Before each delivery, the team runs 63 test questions with known
 correct answers (amounts, contacts, links, refusals), plus automatic checks of the form, the spam
-protection and the emails. All pass as of November 1, 2026.
+protection and the emails. All pass as of November 2, 2026.

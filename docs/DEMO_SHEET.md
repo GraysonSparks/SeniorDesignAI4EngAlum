@@ -36,7 +36,7 @@ Then hand Ed the laptop and let him type his own questions. Write down anything 
 - It runs on our own hardware: no visitor question goes to OpenAI or any outside AI company.
 - Keeping it current is light: edit the content document or update the staff page, then rebuild.
 - None of the four schools Ed named (Oklahoma, Vanderbilt, Purdue, UW) has a chatbot on its giving site.
-- 60 test questions plus form and email checks pass before every delivery.
+- 63 test questions plus form and email checks pass before every delivery.
 
 ## Questions for Ed
 

@@ -95,7 +95,7 @@ Widget shows the answer, source link, contact cards / form button
 
 | Test | What it checks | Last result |
 |---|---|---|
-| `eval_models.py` | 60 real questions (including follow-ups); each must contain the right fact (e.g. "$25,000" for endowments) and must not contain wrong or invented things | 60/60 (11/1) |
+| `eval_models.py` | 63 real questions (including follow-ups); each must contain the right fact (e.g. "$25,000" for endowments) and must not contain wrong or invented things | 63/63 (11/2) |
 | `test_contact.py` | Form, consent, spam limits, signed `/unanswered` | 18/18 |
 | `test_notify.py` | Email and webhook notifications (fake mail server) | 13/13 |
 
