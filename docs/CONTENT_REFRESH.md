@@ -44,7 +44,7 @@ To add a page, add its URL to `URLS` at the top of `scrape_giving_pages.py`.
 cd rag
 python ingest.py                     # about 1 minute
 # restart the server (or Stop/Start on Windows)
-python eval_models.py qwen3.5:9b     # 56 scored questions, about 2 minutes; all should pass
+python eval_models.py qwen3.5:9b     # 63 scored questions, about 2 minutes; all should pass
 ```
 
 If an eval case fails after a content change, either the content now says something different (update

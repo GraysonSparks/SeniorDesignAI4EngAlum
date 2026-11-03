@@ -4,7 +4,8 @@ Team 21 (AI4EngAlum), Auburn COMP 4710, Fall 2026. Sponsor: Ed Collari, Executiv
 Development, Engineering Advancement.
 
 This guide covers what you need to host the assistant and put it on the giving pages. The code is
-in this repository; setup commands are in [`../rag/README.md`](../rag/README.md).
+in this repository; setup commands are in [`../rag/README.md`](../rag/README.md). [`FILE_GUIDE.md`](FILE_GUIDE.md) lists every
+file and marks which ones a deployment needs.
 
 ## What it is
 
@@ -127,7 +128,7 @@ it when the backend can't be reached).
 cd rag
 python test_contact.py               # 18 checks: form, consent, spam limits, /unanswered
 python test_notify.py                # 13 checks: email and webhook with a fake server
-python eval_models.py qwen3.5:9b     # 56 scored questions against the real model
+python eval_models.py qwen3.5:9b     # 63 scored questions against the real model
 ```
 
 ## Contacts

@@ -7,7 +7,7 @@ A local RAG chat assistant for eng.auburn.edu/giving. Setup, running, testing, a
 - `content/`: hand-curated giving Q&A doc (the primary knowledge source)
 - `scraped_pages/`: cleaned text of the official giving pages (staff directory, department pages)
 - `scraper/`: the script that produced `scraped_pages/`
-- `docs/`: [user guide for Engineering Advancement](docs/USER_GUIDE.md), [hosting guide for the
+- `docs/`: [what every file does](docs/FILE_GUIDE.md) (and which ones hosting needs), [user guide for Engineering Advancement](docs/USER_GUIDE.md), [hosting guide for the
   Engineering web team](docs/WEB_TEAM_HANDOFF.md), [how to keep the content current](docs/CONTENT_REFRESH.md),
   [how the code works](docs/CODE_WALKTHROUGH.md) and the [sponsor demo sheet](docs/DEMO_SHEET.md)
 - `windows/`: double-click setup and start/stop scripts for a Windows machine
